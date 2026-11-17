@@ -1,3 +1,7 @@
+from app.core.logging import setup_logging
+
+setup_logging()
+
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
 

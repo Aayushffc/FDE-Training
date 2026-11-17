@@ -25,5 +25,6 @@ build/
 *.egg-info/
 
 # Temporary files
+logs/
 *.log
 *.tmp
