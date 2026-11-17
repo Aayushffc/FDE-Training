@@ -4,11 +4,12 @@ import json
 import logging
 import os
 from datetime import datetime, timezone
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from time import perf_counter
 from typing import TYPE_CHECKING
 
-from app.config import MODEL_PRICING_PER_1M
+from app.core.pricing import calculate_cost_usd
 
 if TYPE_CHECKING:
     from fastapi import FastAPI, Request, Response
@@ -22,6 +23,10 @@ COLORS = {
     "CRITICAL": "\033[35m", # Magenta
 }
 RESET = "\033[0m"
+
+LOG_FILE_PATH = Path("logs") / "app.log"
+MAX_LOG_BYTES = 5 * 1024 * 1024  # 5 MB
+BACKUP_COUNT = 3
 
 
 class ColoredFormatter(logging.Formatter):
@@ -39,7 +44,7 @@ def setup_logging() -> Path | None:
 
     Development:
       - Colored console logs
-      - One log file per application process/session
+      - Single rotating log file at logs/app.log (5 MB max, 3 backups)
 
     Production:
       - Console logs only (normally collected by the hosting platform)
@@ -68,15 +73,15 @@ def setup_logging() -> Path | None:
     log_file = None
 
     if is_development:
-        log_directory = Path("logs")
-        log_directory.mkdir(parents=True, exist_ok=True)
+        LOG_FILE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        log_file = LOG_FILE_PATH
 
-        session_id = datetime.now().strftime("%Y%m%d-%H%M%S")
-        log_file = log_directory / f"dev-{session_id}-{os.getpid()}.log"
-
-        file_handler = logging.FileHandler(
+        file_handler = RotatingFileHandler(
             log_file,
+            maxBytes=MAX_LOG_BYTES,
+            backupCount=BACKUP_COUNT,
             encoding="utf-8",
+            delay=True,
         )
         file_handler.setLevel(logging.DEBUG)
         file_handler.setFormatter(
@@ -96,28 +101,6 @@ def setup_logging() -> Path | None:
     )
 
     return log_file
-
-
-def calculate_cost_usd(
-    model: str,
-    input_tokens: int,
-    output_tokens: int,
-) -> float:
-    rates = MODEL_PRICING_PER_1M.get(model)
-
-    if rates is None:
-        logging.getLogger("llm_observability").warning(
-            "Pricing not configured for model=%s; cost cannot be estimated",
-            model,
-        )
-        return 0.0
-
-    cost = (
-        input_tokens * rates["input"]
-        + output_tokens * rates["output"]
-    ) / 1_000_000
-
-    return round(cost, 8)
 
 
 def log_llm_call(

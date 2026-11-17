@@ -5,7 +5,8 @@ from anthropic import APIError, AsyncAnthropic
 from app.config import settings
 from app.core.exceptions import LLMProviderError
 from app.core.logging import log_llm_call
-from app.schemas.chat import DEFAULT_SYSTEM_PROMPT, ChatRequest, ChatResponse
+from app.core.prompts import SYSTEM_PROMPT
+from app.schemas.chat import ChatRequest, ChatResponse
 
 
 async def generate_chat_completion(payload: ChatRequest) -> ChatResponse:
@@ -14,8 +15,7 @@ async def generate_chat_completion(payload: ChatRequest) -> ChatResponse:
     if api_key is None:
         raise LLMProviderError(provider, "ANTHROPIC_API_KEY environment variable is not set.", status_code=503)
 
-    model = payload.model or settings.default_anthropic_model
-    system_prompt = payload.system_prompt or DEFAULT_SYSTEM_PROMPT
+    model = settings.default_anthropic_model
     started_at = perf_counter()
 
     try:
@@ -26,7 +26,7 @@ async def generate_chat_completion(payload: ChatRequest) -> ChatResponse:
             response = await client.messages.create(
                 model=model,
                 max_tokens=1024,
-                system=system_prompt,
+                system=SYSTEM_PROMPT,
                 messages=[{"role": "user", "content": payload.message}],
             )
     except (APIError, TimeoutError) as exc:

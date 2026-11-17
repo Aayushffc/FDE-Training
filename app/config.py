@@ -1,16 +1,6 @@
 import os
 from dataclasses import dataclass
 
-# Cost per 1,000,000 tokens in USD (update if you test different models)
-MODEL_PRICING_PER_1M: dict[str, dict[str, float]] = {
-    "gpt-6-luna": {"input": 0.10, "output": 0.50},
-    "gpt-4o-mini": {"input": 0.15, "output": 0.60},
-    "claude-haiku-5-5": {"input": 0.10, "output": 0.50},
-    "claude-haiku-4-5": {"input": 1.00, "output": 5.00},
-    "llama-3.3-70b-versatile": {"input": 0.59, "output": 0.79},
-    "llama-3.1-8b-instant": {"input": 0.05, "output": 0.08},
-}
-
 
 @dataclass(frozen=True)
 class Settings:

@@ -5,7 +5,8 @@ from openai import APIError, AsyncOpenAI
 from app.config import settings
 from app.core.exceptions import LLMProviderError
 from app.core.logging import log_llm_call
-from app.schemas.chat import DEFAULT_SYSTEM_PROMPT, ChatRequest, ChatResponse
+from app.core.prompts import SYSTEM_PROMPT
+from app.schemas.chat import ChatRequest, ChatResponse
 
 GROQ_BASE_URL = "https://api.groq.com/openai/v1"
 
@@ -16,8 +17,7 @@ async def generate_chat_completion(payload: ChatRequest) -> ChatResponse:
     if api_key is None:
         raise LLMProviderError(provider, "GROQ_API_KEY environment variable is not set.", status_code=503)
 
-    model = payload.model or settings.default_groq_model
-    system_prompt = payload.system_prompt or DEFAULT_SYSTEM_PROMPT
+    model = settings.default_groq_model
     started_at = perf_counter()
 
     try:
@@ -29,7 +29,7 @@ async def generate_chat_completion(payload: ChatRequest) -> ChatResponse:
             response = await client.chat.completions.create(
                 model=model,
                 messages=[
-                    {"role": "system", "content": system_prompt},
+                    {"role": "system", "content": SYSTEM_PROMPT},
                     {"role": "user", "content": payload.message},
                 ],
             )

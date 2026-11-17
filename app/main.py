@@ -7,6 +7,7 @@ from fastapi.responses import RedirectResponse
 
 from app.core.exceptions import register_exception_handlers
 from app.routers import chat
+from app.schemas.health import HealthResponse
 
 app = FastAPI(
     title="FDE Sprint LLM Gateway",
@@ -23,9 +24,9 @@ async def root() -> RedirectResponse:
     return RedirectResponse(url="/docs")
 
 
-@app.get("/health", tags=["Health"])
-async def health_check() -> dict[str, str]:
-    return {"status": "ok"}
+@app.get("/health", tags=["Health"], response_model=HealthResponse)
+async def health_check() -> HealthResponse:
+    return HealthResponse(status="ok")
 
 
 app.include_router(chat.router)
