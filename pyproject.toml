@@ -1,0 +1,44 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "fde-sprint-llm-gateway"
+version = "0.1.0"
+description = "Unified FastAPI wrapper for OpenAI, Anthropic, and Groq with per-request observability."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "anthropic>=2.9.0",
+    "fastapi>=0.163.1",
+    "groq>=1.7.0",
+    "openai>=3.52.0",
+    "pydantic>=2.14.3",
+    "python-dotenv>=1.2.4",
+    "uvicorn>=0.54.0",
+]
+
+[project.scripts]
+dev = "app.cli:dev"
+start = "app.cli:start"
+test = "app.cli:test"
+test-live = "app.cli:test_live"
+test-all = "app.cli:test_all"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+    "pytest-asyncio>=1.5.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = "-v -m 'not live'"
+markers = [
+    "live: live API smoke tests that hit real OpenAI, Anthropic, or Groq endpoints",
+]
