@@ -11,7 +11,7 @@ from app.routers import chat
 app = FastAPI(
     title="FDE Sprint LLM Gateway",
     version="0.1.0",
-    description="Unified FastAPI wrapper for OpenAI and Anthropic with per-request observability.",
+    description="Unified FastAPI wrapper for OpenAI, Anthropic, and Groq with per-request observability.",
 )
 
 register_exception_handlers(app)

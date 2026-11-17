@@ -7,6 +7,8 @@ MODEL_PRICING_PER_1M: dict[str, dict[str, float]] = {
     "gpt-4o-mini": {"input": 0.15, "output": 0.60},
     "claude-haiku-5-5": {"input": 0.10, "output": 0.50},
     "claude-haiku-4-5": {"input": 1.00, "output": 5.00},
+    "llama-3.3-70b-versatile": {"input": 0.59, "output": 0.79},
+    "llama-3.1-8b-instant": {"input": 0.05, "output": 0.08},
 }
 
 
@@ -14,8 +16,10 @@ MODEL_PRICING_PER_1M: dict[str, dict[str, float]] = {
 class Settings:
     openai_api_key: str | None
     anthropic_api_key: str | None
+    groq_api_key: str | None
     default_openai_model: str = "gpt-6-luna"
     default_anthropic_model: str = "claude-haiku-5-5"
+    default_groq_model: str = "llama-3.3-70b-versatile"
     request_timeout_seconds: float = 30.0
 
 
@@ -23,8 +27,10 @@ def load_settings() -> Settings:
     return Settings(
         openai_api_key=os.getenv("OPENAI_API_KEY", "").strip() or None,
         anthropic_api_key=os.getenv("ANTHROPIC_API_KEY", "").strip() or None,
+        groq_api_key=os.getenv("GROQ_API_KEY", "").strip() or None,
         default_openai_model=os.getenv("OPENAI_MODEL", "").strip() or "gpt-6-luna",
         default_anthropic_model=os.getenv("ANTHROPIC_MODEL", "").strip() or "claude-haiku-5-5",
+        default_groq_model=os.getenv("GROQ_MODEL", "").strip() or "llama-3.3-70b-versatile",
         request_timeout_seconds=float(os.getenv("REQUEST_TIMEOUT", "30")),
     )
 
