@@ -1,10 +1,17 @@
+from __future__ import annotations
+
 import json
 import logging
 import os
 from datetime import datetime, timezone
 from pathlib import Path
+from time import perf_counter
+from typing import TYPE_CHECKING
 
 from app.config import MODEL_PRICING_PER_1M
+
+if TYPE_CHECKING:
+    from fastapi import FastAPI, Request, Response
 
 # ANSI colors for terminal output
 COLORS = {
@@ -146,3 +153,39 @@ def log_llm_call(
     logger.info("LLM_CALL %s", json.dumps(payload))
 
     return cost
+
+
+def register_request_logging_middleware(app: FastAPI) -> None:
+    access_logger = logging.getLogger("api.access")
+
+    @app.middleware("http")
+    async def log_requests(request: Request, call_next) -> Response:
+        started_at = perf_counter()
+        try:
+            response = await call_next(request)
+        except Exception:
+            duration_ms = (perf_counter() - started_at) * 1000
+            access_logger.error(
+                "%s %s -> 500 (%.2f ms)",
+                request.method,
+                request.url.path,
+                duration_ms,
+            )
+            raise
+
+        duration_ms = (perf_counter() - started_at) * 1000
+        if response.status_code >= 500:
+            log_fn = access_logger.error
+        elif response.status_code >= 400:
+            log_fn = access_logger.warning
+        else:
+            log_fn = access_logger.info
+
+        log_fn(
+            "%s %s -> %s (%.2f ms)",
+            request.method,
+            request.url.path,
+            response.status_code,
+            duration_ms,
+        )
+        return response

@@ -1,4 +1,4 @@
-from app.core.logging import setup_logging
+from app.core.logging import register_request_logging_middleware, setup_logging
 
 setup_logging()
 
@@ -14,6 +14,7 @@ app = FastAPI(
     description="Unified FastAPI wrapper for OpenAI, Anthropic, and Groq with per-request observability.",
 )
 
+register_request_logging_middleware(app)
 register_exception_handlers(app)
 
 
