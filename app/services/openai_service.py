@@ -12,7 +12,7 @@ async def generate_chat_completion(payload: ChatRequest) -> ChatResponse:
     provider = "openai"
     api_key = settings.openai_api_key
     if api_key is None:
-        raise LLMProviderError(provider, "OPENAI_API_KEY environment variable is not set.", 503)
+        raise LLMProviderError(provider, "OPENAI_API_KEY environment variable is not set.", status_code=503)
 
     model = payload.model or settings.default_openai_model
     system_prompt = payload.system_prompt or DEFAULT_SYSTEM_PROMPT
@@ -30,7 +30,7 @@ async def generate_chat_completion(payload: ChatRequest) -> ChatResponse:
                     {"role": "user", "content": payload.message},
                 ],
             )
-    except APIError as exc:
+    except (APIError, TimeoutError) as exc:
         latency_ms = (perf_counter() - started_at) * 1000
         log_llm_call(
             provider=provider,
@@ -39,7 +39,7 @@ async def generate_chat_completion(payload: ChatRequest) -> ChatResponse:
             status="error",
             error=type(exc).__name__,
         )
-        raise LLMProviderError(provider, f"OpenAI request failed: {exc}") from exc
+        raise LLMProviderError.from_upstream(provider, exc) from exc
 
     latency_ms = (perf_counter() - started_at) * 1000
     if not response.choices:
@@ -50,7 +50,7 @@ async def generate_chat_completion(payload: ChatRequest) -> ChatResponse:
             status="error",
             error="empty_response",
         )
-        raise LLMProviderError(provider, "OpenAI returned an empty response.")
+        raise LLMProviderError(provider, "OpenAI returned an empty response.", status_code=502)
 
     choice = response.choices[0]
     reply = choice.message.content or ""
@@ -62,7 +62,7 @@ async def generate_chat_completion(payload: ChatRequest) -> ChatResponse:
             status="error",
             error="empty_response",
         )
-        raise LLMProviderError(provider, "OpenAI returned an empty response.")
+        raise LLMProviderError(provider, "OpenAI returned an empty response.", status_code=502)
 
     input_tokens = response.usage.prompt_tokens if response.usage else 0
     output_tokens = response.usage.completion_tokens if response.usage else 0

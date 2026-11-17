@@ -12,7 +12,7 @@ async def generate_chat_completion(payload: ChatRequest) -> ChatResponse:
     provider = "anthropic"
     api_key = settings.anthropic_api_key
     if api_key is None:
-        raise LLMProviderError(provider, "ANTHROPIC_API_KEY environment variable is not set.", 503)
+        raise LLMProviderError(provider, "ANTHROPIC_API_KEY environment variable is not set.", status_code=503)
 
     model = payload.model or settings.default_anthropic_model
     system_prompt = payload.system_prompt or DEFAULT_SYSTEM_PROMPT
@@ -29,7 +29,7 @@ async def generate_chat_completion(payload: ChatRequest) -> ChatResponse:
                 system=system_prompt,
                 messages=[{"role": "user", "content": payload.message}],
             )
-    except APIError as exc:
+    except (APIError, TimeoutError) as exc:
         latency_ms = (perf_counter() - started_at) * 1000
         log_llm_call(
             provider=provider,
@@ -38,7 +38,7 @@ async def generate_chat_completion(payload: ChatRequest) -> ChatResponse:
             status="error",
             error=type(exc).__name__,
         )
-        raise LLMProviderError(provider, f"Anthropic request failed: {exc}") from exc
+        raise LLMProviderError.from_upstream(provider, exc) from exc
 
     latency_ms = (perf_counter() - started_at) * 1000
     reply = "\n".join(block.text for block in response.content if block.type == "text")
@@ -50,7 +50,7 @@ async def generate_chat_completion(payload: ChatRequest) -> ChatResponse:
             status="error",
             error="empty_response",
         )
-        raise LLMProviderError(provider, "Anthropic returned an empty response.")
+        raise LLMProviderError(provider, "Anthropic returned an empty response.", status_code=502)
 
     input_tokens = response.usage.input_tokens
     output_tokens = response.usage.output_tokens
