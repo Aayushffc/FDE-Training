@@ -1,8 +1,20 @@
 import logging
+import re
+
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-logger = logging.getLogger("uvicorn.error")
+logger = logging.getLogger(__name__)
+
+_SECRET_PATTERN = re.compile(
+    r"(?:sk-ant-[A-Za-z0-9_\-]+|sk-[A-Za-z0-9_\-]+|gsk_[A-Za-z0-9_\-]+|Bearer\s+[A-Za-z0-9_\-\.]+)",
+    re.IGNORECASE,
+)
+
+
+def _redact_secrets(text: str) -> str:
+    return _SECRET_PATTERN.sub("[REDACTED]", text)
+
 
 class AppBaseException(Exception):
     """Base domain exception for the application (framework-agnostic)."""
@@ -52,7 +64,8 @@ class LLMProviderError(AppBaseException):
         """
         exc_type = type(exc).__name__
         upstream_status = getattr(exc, "status_code", None)
-        err_detail = getattr(exc, "message", None) or str(exc)
+        raw_detail = getattr(exc, "message", None) or str(exc)
+        err_detail = _redact_secrets(raw_detail)
         provider_name = provider.capitalize()
 
         # 1. Gateway Timeout (504): client timed out waiting for upstream
@@ -121,7 +134,7 @@ async def app_exception_handler(request: Request, exc: AppBaseException) -> JSON
         content={
             "error": exc.error_code,
             "provider": exc.provider,
-            "detail": exc.message,
+            "detail": _redact_secrets(exc.message),
         },
     )
 
@@ -133,7 +146,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
         content={
             "error": "internal_error",
             "provider": None,
-            "detail": str(exc) if str(exc) else "An unexpected internal error occurred.",
+            "detail": "An unexpected internal error occurred.",
         },
     )
 

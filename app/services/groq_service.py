@@ -1,14 +1,12 @@
 from time import perf_counter
 
-from openai import APIError, AsyncOpenAI
+from groq import APIError, AsyncGroq
 
 from app.config import settings
 from app.core.exceptions import LLMProviderError
 from app.core.logging import log_llm_call
 from app.core.prompts import SYSTEM_PROMPT
 from app.schemas.chat import ChatRequest, ChatResponse
-
-GROQ_BASE_URL = "https://api.groq.com/openai/v1"
 
 
 async def generate_chat_completion(payload: ChatRequest) -> ChatResponse:
@@ -21,9 +19,8 @@ async def generate_chat_completion(payload: ChatRequest) -> ChatResponse:
     started_at = perf_counter()
 
     try:
-        async with AsyncOpenAI(
+        async with AsyncGroq(
             api_key=api_key,
-            base_url=GROQ_BASE_URL,
             timeout=settings.request_timeout_seconds,
         ) as client:
             response = await client.chat.completions.create(
