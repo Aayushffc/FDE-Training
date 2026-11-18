@@ -241,3 +241,101 @@ class TestChatEndpoint:
         data = response.json()
         assert data["error"] == "prompt_not_found"
         assert "v999_invalid" in data["detail"]
+
+    def test_chat_stream_endpoint_returns_sse_stream(
+        self, client: TestClient, mock_settings: Settings
+    ) -> None:
+        async def fake_stream(*args, **kwargs):
+            for token in ["Chunk 1 ", "Chunk 2 ", "Chunk 3"]:
+                yield SimpleNamespace(choices=[SimpleNamespace(delta=SimpleNamespace(content=token))])
+
+        with patch("app.infrastructure.llm_providers.openai.AsyncOpenAI") as mock_cls:
+            inst = AsyncMock()
+            mock_cls.return_value.__aenter__.return_value = inst
+            inst.chat.completions.create.return_value = fake_stream()
+
+            response = client.post(
+                "/v1/chat/stream",
+                json={"message": "Count", "provider": "openai"},
+            )
+
+        assert response.status_code == 200
+        assert "text/event-stream" in response.headers["content-type"]
+        body = response.text
+        assert 'data: {"content": "Chunk 1 ", "is_complete": false}' in body
+        assert 'data: {"content": "Chunk 2 ", "is_complete": false}' in body
+        assert 'data: {"content": "Chunk 3", "is_complete": false}' in body
+        assert "data: [DONE]" in body
+
+    def test_chat_post_with_stream_flag_true(
+        self, client: TestClient, mock_settings: Settings
+    ) -> None:
+        async def fake_stream(*args, **kwargs):
+            yield SimpleNamespace(choices=[SimpleNamespace(delta=SimpleNamespace(content="Streaming!"))])
+
+        with patch("app.infrastructure.llm_providers.openai.AsyncOpenAI") as mock_cls:
+            inst = AsyncMock()
+            mock_cls.return_value.__aenter__.return_value = inst
+            inst.chat.completions.create.return_value = fake_stream()
+
+            response = client.post(
+                "/v1/chat",
+                json={"message": "Stream me", "provider": "openai", "stream": True},
+            )
+
+        assert response.status_code == 200
+        assert "text/event-stream" in response.headers["content-type"]
+        assert "Streaming!" in response.text
+        assert "data: [DONE]" in response.text
+
+    def test_list_available_tools_endpoint(self, client: TestClient) -> None:
+        response = client.get("/v1/chat/tools")
+        assert response.status_code == 200
+        data = response.json()
+        assert "available_tools" in data
+        assert data["available_tools"][0]["function"]["name"] == "get_order_status"
+        assert "ORD123" in data["mock_order_ids_for_testing"]
+
+    def test_chat_with_tools_endpoint_triggers_backend_tool(
+        self, client: TestClient, mock_settings: Settings
+    ) -> None:
+        tool_call = SimpleNamespace(
+            id="call_abc123",
+            function=SimpleNamespace(
+                name="get_order_status",
+                arguments='{"order_id": "ORD123"}',
+            ),
+        )
+        first_resp = SimpleNamespace(
+            model="openai/gpt-oss-120b",
+            choices=[SimpleNamespace(message=SimpleNamespace(content=None, tool_calls=[tool_call]))],
+            usage=SimpleNamespace(prompt_tokens=100, completion_tokens=20),
+        )
+        second_resp = SimpleNamespace(
+            model="openai/gpt-oss-120b",
+            choices=[SimpleNamespace(message=SimpleNamespace(content="Your order ORD123 has been shipped via FedEx."))],
+            usage=SimpleNamespace(prompt_tokens=150, completion_tokens=30),
+        )
+
+        with patch("app.modules.agents.service.AsyncGroq") as mock_cls:
+            inst = AsyncMock()
+            mock_cls.return_value.__aenter__.return_value = inst
+            inst.chat.completions.create.side_effect = [first_resp, second_resp]
+
+            response = client.post(
+                "/v1/chat/tools",
+                json={
+                    "message": "Where is my order ORD123?",
+                    "provider": "groq",
+                },
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["provider"] == "groq"
+        assert "ORD123 has been shipped via FedEx" in data["reply"]
+        assert len(data["tool_calls"]) == 1
+        assert data["tool_calls"][0]["tool_name"] == "get_order_status"
+        assert data["tool_calls"][0]["result"]["status"] == "Shipped"
+
+

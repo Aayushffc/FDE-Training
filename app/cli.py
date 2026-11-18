@@ -71,3 +71,24 @@ def analyze_experiments() -> None:
         script_path = Path(__file__).resolve().parent.parent / "scripts" / "analyze_results.py"
     runpy.run_path(str(script_path), run_name="__main__")
 
+
+def stream_demo() -> None:
+    """Run the live Server-Sent Events (SSE) token streaming demonstration."""
+    import runpy
+
+    script_path = Path("scripts") / "demonstrate_streaming.py"
+    if not script_path.exists():
+        script_path = Path(__file__).resolve().parent.parent / "scripts" / "demonstrate_streaming.py"
+    runpy.run_path(str(script_path), run_name="__main__")
+
+
+def tool_demo() -> None:
+    """Run the live LLM tool/function calling demonstration."""
+    import runpy
+
+    script_path = Path("scripts") / "demonstrate_tool_calling.py"
+    if not script_path.exists():
+        script_path = Path(__file__).resolve().parent.parent / "scripts" / "demonstrate_tool_calling.py"
+    runpy.run_path(str(script_path), run_name="__main__")
+
+

@@ -249,6 +249,83 @@ Discover available prompt categories and versions for testing without looking at
 }
 ```
 
+### Server-Sent Events (SSE) Streaming
+
+- `POST /v1/chat/stream` (or `POST /v1/chat` with `"stream": true`)
+
+Streams token chunks incrementally as Server-Sent Events (`text/event-stream`):
+
+**Request:**
+```json
+{
+  "message": "Count from 1 to 5.",
+  "provider": "groq",
+  "stream": true
+}
+```
+
+**SSE Stream Output:**
+```text
+data: {"content": "1", "is_complete": false}
+
+data: {"content": " 2", "is_complete": false}
+
+data: {"content": " 3", "is_complete": false}
+
+data: {"content": " 4", "is_complete": false}
+
+data: {"content": " 5", "is_complete": false}
+
+data: {"content": "", "is_complete": true, "provider": "groq", "latency_ms": 312.4}
+
+data: [DONE]
+```
+
+### Agent Tool Calling
+
+- `POST /v1/chat/tools`
+
+Allows the LLM to autonomously decide when to call backend tools (e.g. `get_order_status`), validates parameters via Pydantic, executes the function in the backend, and feeds results back to the LLM to synthesize the final response.
+
+**Request:**
+```json
+{
+  "message": "What is the status of my order ORD123?",
+  "provider": "groq"
+}
+```
+
+**Response (`200 OK`):**
+```json
+{
+  "reply": "Here’s the latest information for order ORD123:\n\n- Status: Shipped\n- Carrier: FedEx (Tracking: FX-992817203)\n- Estimated Delivery: 2026-11-20\n- Items: Ergonomic Mechanical Keyboard, Braided USB-C Cable\n- Total: $159.99",
+  "provider": "groq",
+  "model": "openai/gpt-oss-120b",
+  "tool_calls": [
+    {
+      "tool_name": "get_order_status",
+      "arguments": {
+        "order_id": "ORD123"
+      },
+      "result": {
+        "order_id": "ORD123",
+        "status": "Shipped",
+        "carrier": "FedEx",
+        "tracking_number": "FX-992817203",
+        "estimated_delivery": "2026-11-20",
+        "items": ["Ergonomic Mechanical Keyboard", "Braided USB-C Cable"],
+        "total_usd": 159.99
+      },
+      "execution_latency_ms": 0.07
+    }
+  ],
+  "total_latency_ms": 1474.48,
+  "estimated_cost_usd": 0.000192
+}
+```
+
+- `GET /v1/chat/tools`: Lists declared tools and schemas available for LLM calling.
+
 **PowerShell example:**
 ```powershell
 $body = @{ message = "Explain FastAPI in one sentence."; provider = "groq" } | ConvertTo-Json
@@ -294,8 +371,8 @@ Tests are organized into 4 architectural levels:
 
 | Level | Folder | Scope | Count |
 | :---: | :--- | :--- | :---: |
-| **1** | `tests/unit/` | Schemas, exceptions, versioned prompt library, registry, pricing, logging | 31 |
-| **2** | `tests/api/` | FastAPI endpoints (`/v1/health`, `/v1/chat`, prompt versioning, validation) | 17 |
+| **1** | `tests/unit/` | Schemas, exceptions, prompt library, registry, pricing, logging, tool validation | 40 |
+| **2** | `tests/api/` | Endpoints (`/health`, `/chat`, `/stream`, `/tools`, prompt versions, validation) | 21 |
 | **3** | `tests/integration/` | Mocked OpenAI, Anthropic, and Groq adapters & exception mapping | 21 |
 | **4** | `tests/smoke/` | Real API calls (`@pytest.mark.live`); skips unconfigured keys | 3 |
 
@@ -303,9 +380,9 @@ Tests are organized into 4 architectural levels:
 
 | Command | Description |
 | :--- | :--- |
-| `uv run test` | Runs all automated tests (79 tests, **excludes** live network calls) |
+| `uv run test` | Runs all automated tests (92 tests, **excludes** live network calls) |
 | `uv run test-live` | Runs **only** live API smoke tests (`tests/smoke`) |
-| `uv run test-all` | Runs **every** test (82 tests including live smoke tests) |
+| `uv run test-all` | Runs **every** test (95 tests including live smoke tests) |
 
 Target a specific module or test keyword:
 ```powershell
@@ -317,14 +394,16 @@ uv run test -k "rate_limit"
 
 ---
 
-## Prompt Engineering & Experiments
+## Live Demonstrations
 
-Commands to run and analyze the 3-version customer-support prompt benchmark:
+Ready-to-run interactive demonstrations for Streaming and Tool Calling:
 
-| Command | Description |
-| :--- | :--- |
-| `uv run run-experiments` | Executes 30 live benchmark runs (10 identical tickets x V1, V2, V3) on Groq |
-| `uv run analyze-experiments` | Parses `docs/promt-experiment/prompt_experiments_data.json` and prints aggregate + per-ticket comparative analysis |
+| Command | Capability | Description |
+| :--- | :--- | :--- |
+| `uv run stream-demo` | **Streaming** | Connects to Server-Sent Events (SSE) stream and prints token chunks in real-time with timing metrics |
+| `uv run tool-demo` | **Tool Calling** | Demonstrates the full 5-step loop: User request → LLM tool selection → Backend validation & execution → Final response synthesis |
+| `uv run run-experiments` | **Prompt Experiments** | Executes 30 live benchmark runs (10 identical tickets x V1, V2, V3) on Groq |
+| `uv run analyze-experiments` | **Benchmark Analysis** | Parses `docs/promt-experiment/prompt_experiments_data.json` and prints aggregate + per-ticket comparative analysis |
 
 Alternatively, run via Python directly:
 ```powershell

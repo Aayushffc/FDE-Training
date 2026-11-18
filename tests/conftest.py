@@ -29,6 +29,7 @@ def mock_settings(monkeypatch: pytest.MonkeyPatch) -> Generator[Settings, None, 
     monkeypatch.setattr("app.infrastructure.llm_providers.openai.settings", test_cfg)
     monkeypatch.setattr("app.infrastructure.llm_providers.anthropic.settings", test_cfg)
     monkeypatch.setattr("app.infrastructure.llm_providers.groq.settings", test_cfg)
+    monkeypatch.setattr("app.modules.agents.service.settings", test_cfg)
     yield test_cfg
 
 
@@ -38,4 +39,5 @@ def override_settings(monkeypatch: pytest.MonkeyPatch, base: Settings, **changes
     monkeypatch.setattr("app.infrastructure.llm_providers.openai.settings", updated)
     monkeypatch.setattr("app.infrastructure.llm_providers.anthropic.settings", updated)
     monkeypatch.setattr("app.infrastructure.llm_providers.groq.settings", updated)
+    monkeypatch.setattr("app.modules.agents.service.settings", updated)
     return updated
