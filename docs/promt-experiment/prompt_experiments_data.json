@@ -1,0 +1,674 @@
+[
+  {
+    "ticket_id": "TICKET-01",
+    "ticket_title": "Double billing rage with legal threat",
+    "ticket_text": "I just checked my bank statement and your company charged my credit card TWICE for the annual enterprise plan ($2,400 each)! That's $4,800 total! I have payroll to make tomorrow. Reverse the duplicate charge immediately or I am calling my lawyer and bank to initiate a fraud chargeback!",
+    "version": "V1",
+    "raw_reply": "**Category:** Billing \u2013 Duplicate charge / Refund request  \n**Urgency:** Critical / High (customer needs immediate resolution to avoid payroll issues)  \n**Sentiment:** Very angry and threatening (high frustration, escalated tone)  \n\n**Summary:**  \nThe customer discovered that their credit card was charged twice for the $2,400 annual enterprise plan, resulting in a $4,800 total charge. They are demanding an immediate reversal of the duplicate charge and threaten legal and chargeback action if it is not resolved promptly.\n\n**Recommended Action:**  \n1. **Acknowledge immediately** \u2013 Apologize for the error and assure the customer that the issue is being treated as a top priority.  \n2. **Verify the duplicate charge** \u2013 Pull the transaction details from the payment processor and confirm the double billing.  \n3. **Process a refund** \u2013 Initiate a full refund for the duplicate $2,400 charge right away. Generate a refund reference number and provide it to the customer.  \n4. **Confirm with the finance/billing team** \u2013 Ensure the refund is completed and that the customer\u2019s account reflects a single $2,400 charge.  \n5. **Communicate status** \u2013 Send the customer a confirmation email/SMS with the refund amount, expected processing time (typically 3\u20115 business days), and the reference number. Offer a direct contact (phone/email) for any follow\u2011up.  \n6. **Prevent recurrence** \u2013 Log the incident in the billing error tracking system and flag the account for a manual review to avoid future duplicate charges.  \n7. **Follow\u2011up** \u2013 After the refund is posted, reach out to confirm the customer has received the funds and ask if any further assistance is needed.  \n\nTaking these steps promptly should de\u2011escalate the situation, protect the customer\u2019s payroll timeline, and reduce the risk of chargebacks or legal action.",
+    "is_valid_json": false,
+    "parsed_json": null,
+    "input_tokens": 172,
+    "output_tokens": 461,
+    "total_tokens": 633,
+    "latency_ms": 1740.4,
+    "estimated_cost_usd": 0.0003024
+  },
+  {
+    "ticket_id": "TICKET-01",
+    "ticket_title": "Double billing rage with legal threat",
+    "ticket_text": "I just checked my bank statement and your company charged my credit card TWICE for the annual enterprise plan ($2,400 each)! That's $4,800 total! I have payroll to make tomorrow. Reverse the duplicate charge immediately or I am calling my lawyer and bank to initiate a fraud chargeback!",
+    "version": "V2",
+    "raw_reply": "{\n  \"category\": \"Billing & Payments\",\n  \"urgency\": \"Critical\",\n  \"sentiment\": \"Angry\",\n  \"churn_risk\": true,\n  \"key_entities\": [\n    \"$2,400\",\n    \"$4,800\",\n    \"annual enterprise plan\",\n    \"duplicate charge\"\n  ],\n  \"summary\": \"The customer was charged twice ($2,400 each) for the annual enterprise plan, totaling $4,800, and demands an immediate reversal.\",\n  \"recommended_action\": \"Escalate to the Billing team lead for immediate reversal of the duplicate charge, process a full refund, and open a fraud investigation while informing the finance and legal departments.\"\n}",
+    "is_valid_json": true,
+    "parsed_json": {
+      "category": "Billing & Payments",
+      "urgency": "Critical",
+      "sentiment": "Angry",
+      "churn_risk": true,
+      "key_entities": [
+        "$2,400",
+        "$4,800",
+        "annual enterprise plan",
+        "duplicate charge"
+      ],
+      "summary": "The customer was charged twice ($2,400 each) for the annual enterprise plan, totaling $4,800, and demands an immediate reversal.",
+      "recommended_action": "Escalate to the Billing team lead for immediate reversal of the duplicate charge, process a full refund, and open a fraud investigation while informing the finance and legal departments."
+    },
+    "input_tokens": 639,
+    "output_tokens": 377,
+    "total_tokens": 1016,
+    "latency_ms": 1109.69,
+    "estimated_cost_usd": 0.00032205
+  },
+  {
+    "ticket_id": "TICKET-01",
+    "ticket_title": "Double billing rage with legal threat",
+    "ticket_text": "I just checked my bank statement and your company charged my credit card TWICE for the annual enterprise plan ($2,400 each)! That's $4,800 total! I have payroll to make tomorrow. Reverse the duplicate charge immediately or I am calling my lawyer and bank to initiate a fraud chargeback!",
+    "version": "V3",
+    "raw_reply": "{\n  \"category\": \"Billing & Payments\",\n  \"urgency\": \"High\",\n  \"sentiment\": \"Angry\",\n  \"churn_risk\": true,\n  \"key_entities\": [\"$2,400\", \"annual enterprise plan\", \"$4,800\", \"credit card\"],\n  \"summary\": \"Customer was charged twice $2,400 for the annual enterprise plan, totaling $4,800, and demands immediate reversal under threat of legal action.\",\n  \"recommended_action\": \"Escalate to the billing team to verify the duplicate charge and issue an immediate refund/credit, and notify the account manager of the high churn risk.\"\n}",
+    "is_valid_json": true,
+    "parsed_json": {
+      "category": "Billing & Payments",
+      "urgency": "High",
+      "sentiment": "Angry",
+      "churn_risk": true,
+      "key_entities": [
+        "$2,400",
+        "annual enterprise plan",
+        "$4,800",
+        "credit card"
+      ],
+      "summary": "Customer was charged twice $2,400 for the annual enterprise plan, totaling $4,800, and demands immediate reversal under threat of legal action.",
+      "recommended_action": "Escalate to the billing team to verify the duplicate charge and issue an immediate refund/credit, and notify the account manager of the high churn risk."
+    },
+    "input_tokens": 1120,
+    "output_tokens": 435,
+    "total_tokens": 1555,
+    "latency_ms": 1469.71,
+    "estimated_cost_usd": 0.000429
+  },
+  {
+    "ticket_id": "TICKET-02",
+    "ticket_title": "Production webhook 500 downtime outage",
+    "ticket_text": "URGENT: Our production webhook endpoint is returning 500 Internal Server Error for all checkout requests since 10 minutes ago. None of our customers can place orders on our eCommerce store. We're losing thousands of dollars every minute! Status page says all systems operational which is false. Help ASAP!",
+    "version": "V1",
+    "raw_reply": "**Category:**\u202fTechnical \u2013 Production Webhook / API Failure  \n\n**Urgency:**\u202fCritical /\u202fUrgent (service\u2011outage impacting revenue in real time)  \n\n**Sentiment:**\u202fHighly negative \u2013 frustrated and alarmed  \n\n**Summary:**  \nThe customer\u2019s production webhook endpoint is returning **500 Internal Server Error** for every checkout request. The issue started ~10\u202fminutes ago and is preventing all customers from completing orders, causing immediate revenue loss. The public status page incorrectly shows \u201call systems operational.\u201d\n\n**Recommended Immediate Action:**  \n\n1. **Acknowledge the incident** right away and reassure the customer that the team is on it.  \n2. **Escalate to the on\u2011call engineering/DevOps team** (P1 incident) with the exact endpoint URL, request IDs, and timestamps.  \n3. **Collect diagnostic data:**  \n   - Pull recent logs (application, web server, and any downstream services).  \n   - Check recent deployments, configuration changes, or feature flags that went live within the last hour.  \n   - Verify database/third\u2011party service health (even if status page says OK).  \n4. **Temporarily mitigate:**  \n   - If possible, route checkout traffic to a known\u2011good backup endpoint or enable a maintenance mode page explaining the issue to shoppers.  \n   - Consider rolling back the most recent deployment or disabling the offending feature flag.  \n5. **Communicate:**  \n   - Provide the customer with an incident number, expected SLA for a first update (e.g., within 15\u202fminutes), and regular status updates.  \n   - Once the root cause is identified, share a concise post\u2011mortem and remediation plan.  \n\n**Goal:** Restore the webhook to return successful responses (200/201) as quickly as possible to resume order processing and stop revenue loss.",
+    "is_valid_json": false,
+    "parsed_json": null,
+    "input_tokens": 170,
+    "output_tokens": 445,
+    "total_tokens": 615,
+    "latency_ms": 1358.9,
+    "estimated_cost_usd": 0.0002925
+  },
+  {
+    "ticket_id": "TICKET-02",
+    "ticket_title": "Production webhook 500 downtime outage",
+    "ticket_text": "URGENT: Our production webhook endpoint is returning 500 Internal Server Error for all checkout requests since 10 minutes ago. None of our customers can place orders on our eCommerce store. We're losing thousands of dollars every minute! Status page says all systems operational which is false. Help ASAP!",
+    "version": "V2",
+    "raw_reply": "{\n  \"category\": \"Technical Bug\",\n  \"urgency\": \"Critical\",\n  \"sentiment\": \"Frustrated\",\n  \"churn_risk\": false,\n  \"key_entities\": [\n    \"production webhook endpoint\",\n    \"500 Internal Server Error\",\n    \"checkout requests\"\n  ],\n  \"summary\": \"The production webhook endpoint is returning 500 Internal Server Error for all checkout requests, blocking customers from placing orders and causing immediate revenue loss.\",\n  \"recommended_action\": \"Escalate to the engineering incident response team to diagnose and resolve the webhook failure immediately, and provide the customer with real-time status updates.\"\n}",
+    "is_valid_json": true,
+    "parsed_json": {
+      "category": "Technical Bug",
+      "urgency": "Critical",
+      "sentiment": "Frustrated",
+      "churn_risk": false,
+      "key_entities": [
+        "production webhook endpoint",
+        "500 Internal Server Error",
+        "checkout requests"
+      ],
+      "summary": "The production webhook endpoint is returning 500 Internal Server Error for all checkout requests, blocking customers from placing orders and causing immediate revenue loss.",
+      "recommended_action": "Escalate to the engineering incident response team to diagnose and resolve the webhook failure immediately, and provide the customer with real-time status updates."
+    },
+    "input_tokens": 637,
+    "output_tokens": 462,
+    "total_tokens": 1099,
+    "latency_ms": 1408.57,
+    "estimated_cost_usd": 0.00037275
+  },
+  {
+    "ticket_id": "TICKET-02",
+    "ticket_title": "Production webhook 500 downtime outage",
+    "ticket_text": "URGENT: Our production webhook endpoint is returning 500 Internal Server Error for all checkout requests since 10 minutes ago. None of our customers can place orders on our eCommerce store. We're losing thousands of dollars every minute! Status page says all systems operational which is false. Help ASAP!",
+    "version": "V3",
+    "raw_reply": "{\n  \"category\": \"Technical Bug\",\n  \"urgency\": \"Critical\",\n  \"sentiment\": \"Frustrated\",\n  \"churn_risk\": false,\n  \"key_entities\": [\n    \"production webhook endpoint\",\n    \"500 Internal Server Error\",\n    \"checkout requests\",\n    \"thousands of dollars\",\n    \"status page\"\n  ],\n  \"summary\": \"The production webhook endpoint has been returning 500 Internal Server Errors for all checkout requests for the past 10 minutes, blocking customer orders and causing significant revenue loss.\",\n  \"recommended_action\": \"Immediately route the ticket to the on-call engineering team to investigate and resolve the webhook failure, restore checkout functionality, and provide the customer with real\u2011time status updates.\"\n}",
+    "is_valid_json": true,
+    "parsed_json": {
+      "category": "Technical Bug",
+      "urgency": "Critical",
+      "sentiment": "Frustrated",
+      "churn_risk": false,
+      "key_entities": [
+        "production webhook endpoint",
+        "500 Internal Server Error",
+        "checkout requests",
+        "thousands of dollars",
+        "status page"
+      ],
+      "summary": "The production webhook endpoint has been returning 500 Internal Server Errors for all checkout requests for the past 10 minutes, blocking customer orders and causing significant revenue loss.",
+      "recommended_action": "Immediately route the ticket to the on-call engineering team to investigate and resolve the webhook failure, restore checkout functionality, and provide the customer with real\u2011time status updates."
+    },
+    "input_tokens": 1118,
+    "output_tokens": 493,
+    "total_tokens": 1611,
+    "latency_ms": 1591.76,
+    "estimated_cost_usd": 0.0004635
+  },
+  {
+    "ticket_id": "TICKET-03",
+    "ticket_title": "Stolen phone 2FA lockout",
+    "ticket_text": "Hi support, my phone was stolen yesterday and I lost access to my Google Authenticator app. Now I cannot log in to my admin account (email: sarah.connor@cyberdyne.io). I don't have the backup codes with me. Can someone temporarily disable 2FA or send a reset link to my verified recovery email?",
+    "version": "V1",
+    "raw_reply": "**Category:** Account Access \u2013 Two\u2011Factor Authentication (2FA) recovery  \n\n**Urgency:** High \u2013 the user is locked out of an admin account and cannot perform any work until access is restored.  \n\n**Sentiment:** Polite but urgent; the user is worried because the phone with the authenticator was stolen and backup codes are unavailable.  \n\n**Summary:**  \nThe customer\u2019s phone, which held the Google Authenticator app, was stolen. As a result, she cannot complete the 2FA step required to log into her admin account (sarah.connor@cyberdyne.io). She also does not have her backup codes. She is requesting either a temporary disablement of 2FA or a reset link sent to her verified recovery email.\n\n**Recommended Action:**  \n\n1. **Verify Identity**  \n   - Ask the user to confirm additional account details (e.g., last login IP, recent activity, security questions, or a photo ID) to ensure the request is legitimate.  \n   - If possible, cross\u2011check the request against any existing support tickets or alerts for the same account.\n\n2. **Follow Secure 2FA Recovery Procedure**  \n   - Explain that, for security reasons, we cannot simply \u201cdisable\u201d 2FA via email.  \n   - Offer to generate a **One\u2011Time Passcode (OTP) reset link** that can be sent to the user\u2019s verified recovery email. The link should be time\u2011limited (e.g., 30\u202fminutes) and usable only once.  \n   - Once the user clicks the link, guide them through the process to set up a new authenticator device or receive new backup codes.\n\n3. **Temporary Access (if policy permits)**  \n   - If the organization\u2019s policy allows, issue a **temporary admin\u2011level access token** after identity verification, valid for a short period (e.g., 2\u202fhours) to let the user log in and re\u2011configure 2FA.  \n   - Log this action thoroughly for audit purposes.\n\n4. **Post\u2011Recovery Security Recommendations**  \n   - Advise the user to add multiple 2FA methods (e.g., backup phone number, hardware token, printed backup codes) to prevent future lockouts.  \n   - Suggest revoking the stolen device\u2019s access from the account\u2019s security settings as soon as possible.  \n   - Recommend updating the recovery email/phone if they have changed.\n\n5. **Document the Interaction**  \n   - Record the ticket details, verification steps taken, and the outcome (reset link sent, temporary token issued, etc.) for compliance and future reference.\n\n**Next Steps for Support Agent:**  \n- Prompt the user for the required verification information.  \n- Once verified, generate and send the secure 2FA reset link (or temporary token) to the confirmed recovery email.  \n- Follow up to confirm the user successfully regains access and has re\u2011established 2FA.  \n\n*If the user cannot provide satisfactory verification, politely inform them that we must follow the standard security protocol and may need to involve the account\u2019s security team.*",
+    "is_valid_json": false,
+    "parsed_json": null,
+    "input_tokens": 181,
+    "output_tokens": 780,
+    "total_tokens": 961,
+    "latency_ms": 1912.37,
+    "estimated_cost_usd": 0.00049515
+  },
+  {
+    "ticket_id": "TICKET-03",
+    "ticket_title": "Stolen phone 2FA lockout",
+    "ticket_text": "Hi support, my phone was stolen yesterday and I lost access to my Google Authenticator app. Now I cannot log in to my admin account (email: sarah.connor@cyberdyne.io). I don't have the backup codes with me. Can someone temporarily disable 2FA or send a reset link to my verified recovery email?",
+    "version": "V2",
+    "raw_reply": "{\n  \"category\": \"Account Access & Security\",\n  \"urgency\": \"High\",\n  \"sentiment\": \"Frustrated\",\n  \"churn_risk\": false,\n  \"key_entities\": [\"sarah.connor@cyberdyne.io\"],\n  \"summary\": \"The customer lost their phone and Google Authenticator access, cannot log into their admin account, and lacks backup codes, requesting a temporary 2FA disable or reset link.\",\n  \"recommended_action\": \"Verify the user's identity and, according to security protocol, temporarily disable 2FA or send a password reset link to the verified recovery email.\"\n}",
+    "is_valid_json": true,
+    "parsed_json": {
+      "category": "Account Access & Security",
+      "urgency": "High",
+      "sentiment": "Frustrated",
+      "churn_risk": false,
+      "key_entities": [
+        "sarah.connor@cyberdyne.io"
+      ],
+      "summary": "The customer lost their phone and Google Authenticator access, cannot log into their admin account, and lacks backup codes, requesting a temporary 2FA disable or reset link.",
+      "recommended_action": "Verify the user's identity and, according to security protocol, temporarily disable 2FA or send a password reset link to the verified recovery email."
+    },
+    "input_tokens": 648,
+    "output_tokens": 445,
+    "total_tokens": 1093,
+    "latency_ms": 1452.49,
+    "estimated_cost_usd": 0.0003642
+  },
+  {
+    "ticket_id": "TICKET-03",
+    "ticket_title": "Stolen phone 2FA lockout",
+    "ticket_text": "Hi support, my phone was stolen yesterday and I lost access to my Google Authenticator app. Now I cannot log in to my admin account (email: sarah.connor@cyberdyne.io). I don't have the backup codes with me. Can someone temporarily disable 2FA or send a reset link to my verified recovery email?",
+    "version": "V3",
+    "raw_reply": "{\n  \"category\": \"Account Access & Security\",\n  \"urgency\": \"High\",\n  \"sentiment\": \"Frustrated\",\n  \"churn_risk\": false,\n  \"key_entities\": [\"sarah.connor@cyberdyne.io\", \"Google Authenticator\", \"2FA\", \"backup codes\"],\n  \"summary\": \"Customer cannot log into their admin account after their phone was stolen and they lost access to Google Authenticator, and they do not have backup codes.\",\n  \"recommended_action\": \"Verify the user's identity per security SOP, then temporarily disable 2FA or send a reset link to the verified recovery email to restore account access.\"\n}",
+    "is_valid_json": true,
+    "parsed_json": {
+      "category": "Account Access & Security",
+      "urgency": "High",
+      "sentiment": "Frustrated",
+      "churn_risk": false,
+      "key_entities": [
+        "sarah.connor@cyberdyne.io",
+        "Google Authenticator",
+        "2FA",
+        "backup codes"
+      ],
+      "summary": "Customer cannot log into their admin account after their phone was stolen and they lost access to Google Authenticator, and they do not have backup codes.",
+      "recommended_action": "Verify the user's identity per security SOP, then temporarily disable 2FA or send a reset link to the verified recovery email to restore account access."
+    },
+    "input_tokens": 1129,
+    "output_tokens": 460,
+    "total_tokens": 1589,
+    "latency_ms": 2409.98,
+    "estimated_cost_usd": 0.00044535
+  },
+  {
+    "ticket_id": "TICKET-04",
+    "ticket_title": "Subscription cancellation and data purge request",
+    "ticket_text": "We have been evaluating your platform for 3 months, but the frequent UI redesigns and broken CSV export make it impossible for our reporting team. Please cancel our subscription at the end of the current billing cycle and confirm our data will be purged. Do not try to upsell us.",
+    "version": "V1",
+    "raw_reply": "**Category:** Subscription & Billing \u2013 Cancellation Request / Data Deletion  \n\n**Urgency:** High \u2013 The customer explicitly demands immediate cancellation and confirmation of data purge, and asks not to be contacted for upsell.  \n\n**Sentiment:** Negative \u2013 Frustration with frequent UI changes and broken CSV export has led to dissatisfaction.  \n\n**Summary:**  \nThe customer has been using the platform for three months but is unhappy with frequent UI redesigns and a malfunctioning CSV export feature. They are requesting that their subscription be canceled at the end of the current billing cycle and that all their data be permanently deleted. They also explicitly request no upsell attempts.  \n\n**Recommended Action:**  \n1. **Acknowledge** the request promptly and thank them for the feedback.  \n2. **Confirm** the cancellation will take effect at the end of the current billing cycle and provide the exact date.  \n3. **Assure** them that all their data will be purged in accordance with our data\u2011retention policy and provide a timeline for completion.  \n4. **Document** the request in the account notes with a \u201cDo Not Contact for Upsell\u201d flag.  \n5. **Process** the cancellation in the billing system and schedule the data deletion job.  \n6. **Send** a confirmation email summarizing the cancellation date, data\u2011deletion plan, and a reference number for the request.  \n7. **Close** the ticket once the cancellation and data purge are completed, or update the ticket with completion details if further follow\u2011up is needed.",
+    "is_valid_json": false,
+    "parsed_json": null,
+    "input_tokens": 170,
+    "output_tokens": 418,
+    "total_tokens": 588,
+    "latency_ms": 4396.53,
+    "estimated_cost_usd": 0.0002763
+  },
+  {
+    "ticket_id": "TICKET-04",
+    "ticket_title": "Subscription cancellation and data purge request",
+    "ticket_text": "We have been evaluating your platform for 3 months, but the frequent UI redesigns and broken CSV export make it impossible for our reporting team. Please cancel our subscription at the end of the current billing cycle and confirm our data will be purged. Do not try to upsell us.",
+    "version": "V2",
+    "raw_reply": "{\n  \"category\": \"Cancellation & Churn Risk\",\n  \"urgency\": \"High\",\n  \"sentiment\": \"Frustrated\",\n  \"churn_risk\": true,\n  \"key_entities\": [\"CSV export\", \"current billing cycle\"],\n  \"summary\": \"The customer requests cancellation of their subscription at the end of the current billing cycle due to frequent UI redesigns and broken CSV export, and asks for confirmation that their data will be purged with no upsell attempts.\",\n  \"recommended_action\": \"Route to the Billing/Cancellation team to schedule the subscription cancellation at the end of the current billing cycle, confirm data purge, and ensure no upsell communication is sent.\"\n}",
+    "is_valid_json": true,
+    "parsed_json": {
+      "category": "Cancellation & Churn Risk",
+      "urgency": "High",
+      "sentiment": "Frustrated",
+      "churn_risk": true,
+      "key_entities": [
+        "CSV export",
+        "current billing cycle"
+      ],
+      "summary": "The customer requests cancellation of their subscription at the end of the current billing cycle due to frequent UI redesigns and broken CSV export, and asks for confirmation that their data will be purged with no upsell attempts.",
+      "recommended_action": "Route to the Billing/Cancellation team to schedule the subscription cancellation at the end of the current billing cycle, confirm data purge, and ensure no upsell communication is sent."
+    },
+    "input_tokens": 637,
+    "output_tokens": 449,
+    "total_tokens": 1086,
+    "latency_ms": 7632.65,
+    "estimated_cost_usd": 0.00036495
+  },
+  {
+    "ticket_id": "TICKET-04",
+    "ticket_title": "Subscription cancellation and data purge request",
+    "ticket_text": "We have been evaluating your platform for 3 months, but the frequent UI redesigns and broken CSV export make it impossible for our reporting team. Please cancel our subscription at the end of the current billing cycle and confirm our data will be purged. Do not try to upsell us.",
+    "version": "V3",
+    "raw_reply": "{\n  \"category\": \"Cancellation & Churn Risk\",\n  \"urgency\": \"High\",\n  \"sentiment\": \"Angry\",\n  \"churn_risk\": true,\n  \"key_entities\": [\"3 months\", \"UI redesigns\", \"CSV export\", \"current billing cycle\", \"reporting team\"],\n  \"summary\": \"Customer requests cancellation of their subscription at the end of the current billing cycle due to frequent UI redesigns and broken CSV export, and asks for data purge confirmation.\",\n  \"recommended_action\": \"Submit cancellation request to billing team to terminate the account at the end of the current billing cycle, confirm data purge with the customer, and flag the account to prevent any upsell outreach.\"\n}",
+    "is_valid_json": true,
+    "parsed_json": {
+      "category": "Cancellation & Churn Risk",
+      "urgency": "High",
+      "sentiment": "Angry",
+      "churn_risk": true,
+      "key_entities": [
+        "3 months",
+        "UI redesigns",
+        "CSV export",
+        "current billing cycle",
+        "reporting team"
+      ],
+      "summary": "Customer requests cancellation of their subscription at the end of the current billing cycle due to frequent UI redesigns and broken CSV export, and asks for data purge confirmation.",
+      "recommended_action": "Submit cancellation request to billing team to terminate the account at the end of the current billing cycle, confirm data purge with the customer, and flag the account to prevent any upsell outreach."
+    },
+    "input_tokens": 1118,
+    "output_tokens": 595,
+    "total_tokens": 1713,
+    "latency_ms": 14573.02,
+    "estimated_cost_usd": 0.0005247
+  },
+  {
+    "ticket_id": "TICKET-05",
+    "ticket_title": "Positive feedback with HMAC feature request",
+    "ticket_text": "Hey team! Love the new dark mode and the overall platform speed. One quick suggestion: would it be possible to add webhook signatures (HMAC-SHA256) so we can verify incoming payloads more securely? Right now we have to rely on IP whitelisting. Keep up the awesome work!",
+    "version": "V1",
+    "raw_reply": "**Category:** Feature Request / Security Enhancement (Webhook Authentication)  \n**Urgency:** Low \u2013 non\u2011blocking suggestion, no immediate impact on current operations.  \n**Sentiment:** Positive (the user praises the platform and expresses enthusiasm).  \n\n**Summary:**  \nThe customer appreciates the recent dark\u2011mode update and overall performance improvements. They request the addition of HMAC\u2011SHA256 signatures for webhook payloads so they can securely verify incoming requests, rather than relying solely on IP whitelisting.\n\n**Recommended Action:**  \n1. Acknowledge the feedback and thank the user for the suggestion.  \n2. Log the request in the product/engineering backlog under \u201cWebhook Security \u2013 HMAC Signature support.\u201d  \n3. Notify the security and API product teams to evaluate feasibility, required changes to the webhook API, and any impact on existing integrations.  \n4. If approved, prioritize the feature (e.g., in the next quarter\u2019s roadmap) and keep the customer updated on progress.",
+    "is_valid_json": false,
+    "parsed_json": null,
+    "input_tokens": 173,
+    "output_tokens": 291,
+    "total_tokens": 464,
+    "latency_ms": 1093.4,
+    "estimated_cost_usd": 0.00020055
+  },
+  {
+    "ticket_id": "TICKET-05",
+    "ticket_title": "Positive feedback with HMAC feature request",
+    "ticket_text": "Hey team! Love the new dark mode and the overall platform speed. One quick suggestion: would it be possible to add webhook signatures (HMAC-SHA256) so we can verify incoming payloads more securely? Right now we have to rely on IP whitelisting. Keep up the awesome work!",
+    "version": "V2",
+    "raw_reply": "{\n  \"category\": \"Feature Request\",\n  \"urgency\": \"Low\",\n  \"sentiment\": \"Positive\",\n  \"churn_risk\": false,\n  \"key_entities\": [\n    \"webhook signatures\",\n    \"HMAC-SHA256\",\n    \"IP whitelisting\"\n  ],\n  \"summary\": \"Customer suggests adding HMAC-SHA256 webhook signatures for payload verification, as they currently rely on IP whitelisting.\",\n  \"recommended_action\": \"Escalate to product/engineering team for feature feasibility review and potential roadmap inclusion.\"\n}",
+    "is_valid_json": true,
+    "parsed_json": {
+      "category": "Feature Request",
+      "urgency": "Low",
+      "sentiment": "Positive",
+      "churn_risk": false,
+      "key_entities": [
+        "webhook signatures",
+        "HMAC-SHA256",
+        "IP whitelisting"
+      ],
+      "summary": "Customer suggests adding HMAC-SHA256 webhook signatures for payload verification, as they currently rely on IP whitelisting.",
+      "recommended_action": "Escalate to product/engineering team for feature feasibility review and potential roadmap inclusion."
+    },
+    "input_tokens": 640,
+    "output_tokens": 244,
+    "total_tokens": 884,
+    "latency_ms": 862.01,
+    "estimated_cost_usd": 0.0002424
+  },
+  {
+    "ticket_id": "TICKET-05",
+    "ticket_title": "Positive feedback with HMAC feature request",
+    "ticket_text": "Hey team! Love the new dark mode and the overall platform speed. One quick suggestion: would it be possible to add webhook signatures (HMAC-SHA256) so we can verify incoming payloads more securely? Right now we have to rely on IP whitelisting. Keep up the awesome work!",
+    "version": "V3",
+    "raw_reply": "{\n  \"category\": \"Feature Request\",\n  \"urgency\": \"Low\",\n  \"sentiment\": \"Positive\",\n  \"churn_risk\": false,\n  \"key_entities\": [\"webhook signatures\", \"HMAC-SHA256\", \"IP whitelisting\", \"dark mode\"],\n  \"summary\": \"Customer enjoys dark mode and platform speed and requests the addition of HMAC-SHA256 webhook signatures to improve payload verification instead of relying on IP whitelisting.\",\n  \"recommended_action\": \"Record the request in the product backlog, route it to the security/feature team for evaluation, and reply to the customer thanking them for the suggestion.\"\n}",
+    "is_valid_json": true,
+    "parsed_json": {
+      "category": "Feature Request",
+      "urgency": "Low",
+      "sentiment": "Positive",
+      "churn_risk": false,
+      "key_entities": [
+        "webhook signatures",
+        "HMAC-SHA256",
+        "IP whitelisting",
+        "dark mode"
+      ],
+      "summary": "Customer enjoys dark mode and platform speed and requests the addition of HMAC-SHA256 webhook signatures to improve payload verification instead of relying on IP whitelisting.",
+      "recommended_action": "Record the request in the product backlog, route it to the security/feature team for evaluation, and reply to the customer thanking them for the suggestion."
+    },
+    "input_tokens": 1121,
+    "output_tokens": 340,
+    "total_tokens": 1461,
+    "latency_ms": 10493.57,
+    "estimated_cost_usd": 0.00037215
+  },
+  {
+    "ticket_id": "TICKET-06",
+    "ticket_title": "Vague non-specific UI complaint",
+    "ticket_text": "It's not working. Every time I click the blue button on the dashboard nothing happens. I tried yesterday and again today. Fix it please.",
+    "version": "V1",
+    "raw_reply": "**Category:** Technical Issue \u2013 UI/Functionality Bug  \n\n**Urgency:** High \u2013 the user cannot perform a key action on the dashboard, which is blocking their workflow.  \n\n**Sentiment:** Frustrated / Negative  \n\n**Summary:** The user reports that clicking the blue button on the dashboard yields no response. The problem occurred yesterday and persists today, indicating a consistent malfunction.  \n\n**Recommended Action:**  \n1. Acknowledge the issue promptly and apologize for the inconvenience.  \n2. Gather additional details (e.g., browser, device, any error messages, steps leading to the button click).  \n3. Replicate the problem in a test environment to identify the root cause (possible JavaScript error, UI blockage, or backend failure).  \n4. If the issue can be resolved quickly (e.g., clearing cache, updating the page), provide the fix or a workaround.  \n5. If it requires development effort, log a bug ticket with the engineering team, assign a priority \u201cHigh,\u201d and give the user an estimated timeline for resolution.  \n6. Follow up with the user once the fix is deployed to confirm the button works as expected.",
+    "is_valid_json": false,
+    "parsed_json": null,
+    "input_tokens": 140,
+    "output_tokens": 310,
+    "total_tokens": 450,
+    "latency_ms": 1169.36,
+    "estimated_cost_usd": 0.000207
+  },
+  {
+    "ticket_id": "TICKET-06",
+    "ticket_title": "Vague non-specific UI complaint",
+    "ticket_text": "It's not working. Every time I click the blue button on the dashboard nothing happens. I tried yesterday and again today. Fix it please.",
+    "version": "V2",
+    "raw_reply": "{\n  \"category\": \"Technical Bug\",\n  \"urgency\": \"Medium\",\n  \"sentiment\": \"Frustrated\",\n  \"churn_risk\": false,\n  \"key_entities\": [\"blue button\"],\n  \"summary\": \"The user reports that clicking the blue button on the dashboard does nothing.\",\n  \"recommended_action\": \"Create a bug ticket for the UI issue, assign it to the engineering team, and request additional details such as screenshots or console logs from the customer.\"\n}",
+    "is_valid_json": true,
+    "parsed_json": {
+      "category": "Technical Bug",
+      "urgency": "Medium",
+      "sentiment": "Frustrated",
+      "churn_risk": false,
+      "key_entities": [
+        "blue button"
+      ],
+      "summary": "The user reports that clicking the blue button on the dashboard does nothing.",
+      "recommended_action": "Create a bug ticket for the UI issue, assign it to the engineering team, and request additional details such as screenshots or console logs from the customer."
+    },
+    "input_tokens": 607,
+    "output_tokens": 367,
+    "total_tokens": 974,
+    "latency_ms": 1261.98,
+    "estimated_cost_usd": 0.00031125
+  },
+  {
+    "ticket_id": "TICKET-06",
+    "ticket_title": "Vague non-specific UI complaint",
+    "ticket_text": "It's not working. Every time I click the blue button on the dashboard nothing happens. I tried yesterday and again today. Fix it please.",
+    "version": "V3",
+    "raw_reply": "{\n  \"category\": \"Technical Bug\",\n  \"urgency\": \"Medium\",\n  \"sentiment\": \"Frustrated\",\n  \"churn_risk\": false,\n  \"key_entities\": [\"blue button\", \"dashboard\"],\n  \"summary\": \"The blue button on the dashboard does not respond when clicked.\",\n  \"recommended_action\": \"Assign to UI/engineering team to reproduce the issue, investigate the button's functionality, and implement a fix.\"\n}",
+    "is_valid_json": true,
+    "parsed_json": {
+      "category": "Technical Bug",
+      "urgency": "Medium",
+      "sentiment": "Frustrated",
+      "churn_risk": false,
+      "key_entities": [
+        "blue button",
+        "dashboard"
+      ],
+      "summary": "The blue button on the dashboard does not respond when clicked.",
+      "recommended_action": "Assign to UI/engineering team to reproduce the issue, investigate the button's functionality, and implement a fix."
+    },
+    "input_tokens": 1088,
+    "output_tokens": 282,
+    "total_tokens": 1370,
+    "latency_ms": 6981.09,
+    "estimated_cost_usd": 0.0003324
+  },
+  {
+    "ticket_id": "TICKET-07",
+    "ticket_title": "Formal GDPR Article 17 erasure request",
+    "ticket_text": "To the Data Protection Officer / Security Team: Under GDPR Article 17, our organization hereby submits a formal Right to Erasure request for user ID usr_98234710. Please provide written confirmation within 30 days that all personal identifiable data, logs, and backups associated with this user have been completely anonymized or deleted.",
+    "version": "V1",
+    "raw_reply": "**Category:**  \nData\u2011Protection / GDPR \u2013 Right\u2011to\u2011Erasure (Delete\u2011User\u2011Data) request  \n\n**Urgency:**  \nHigh \u2013 Legal deadline (30\u202fdays) for compliance with GDPR Article\u202f17.  \n\n**Sentiment:**  \nNeutral/formal (no negative emotion, but the request carries a compliance\u2011critical tone).  \n\n**Summary of Issue:**  \nThe requester, acting on behalf of the organization\u2019s Data Protection Officer/Security Team, is formally exercising a GDPR Right\u2011to\u2011Erasure for user **usr_98234710**. They demand that all personally identifiable information, logs, and backups linked to this user be fully anonymised or deleted, and they require written confirmation of completion within the statutory 30\u2011day window.  \n\n**Recommended Action:**  \n\n1. **Acknowledge receipt** immediately (within 1 business day) and confirm the request is being processed.  \n2. **Assign** the ticket to the Data Protection Officer (or the designated GDPR compliance team).  \n3. **Validate** the user identifier (usr_98234710) against internal records to ensure it is a legitimate request.  \n4. **Perform a comprehensive data inventory** for that user across:  \n   - Primary databases (CRM, user accounts, billing, etc.)  \n   - Application logs and audit trails  \n   - Back\u2011up storage (snapshot archives, cold storage, cloud backups)  \n   - Any third\u2011party services where the data may reside.  \n5. **Delete or anonymise** all identified personal data in accordance with the organization\u2019s data\u2011retention policy and GDPR guidance.  \n6. **Document** every step taken (what was deleted, what was retained for legal hold, timestamps, personnel involved).  \n7. **Generate written confirmation** (letter/email) stating that the erasure has been completed, include details of the actions performed, and send it to the requester **within the 30\u2011day deadline**.  \n8. **Log the request** in the GDPR compliance register for audit purposes.  \n\nIf any data cannot be deleted (e.g., required for legal retention), clearly explain the lawful basis for retention in the confirmation, and ensure that the remaining data is appropriately pseudonymised.  \n\n**Follow\u2011up:** Set a reminder to verify that the confirmation was sent before the deadline and close the ticket after receipt of acknowledgement from the requester.",
+    "is_valid_json": false,
+    "parsed_json": null,
+    "input_tokens": 177,
+    "output_tokens": 585,
+    "total_tokens": 762,
+    "latency_ms": 5815.01,
+    "estimated_cost_usd": 0.00037755
+  },
+  {
+    "ticket_id": "TICKET-07",
+    "ticket_title": "Formal GDPR Article 17 erasure request",
+    "ticket_text": "To the Data Protection Officer / Security Team: Under GDPR Article 17, our organization hereby submits a formal Right to Erasure request for user ID usr_98234710. Please provide written confirmation within 30 days that all personal identifiable data, logs, and backups associated with this user have been completely anonymized or deleted.",
+    "version": "V2",
+    "raw_reply": "{\n  \"category\": \"Account Access & Security\",\n  \"urgency\": \"High\",\n  \"sentiment\": \"Neutral\",\n  \"churn_risk\": false,\n  \"key_entities\": [\n    \"usr_98234710\",\n    \"GDPR Article 17\"\n  ],\n  \"summary\": \"The requester asks for the complete deletion or anonymization of all personal data associated with user ID usr_98234710 under GDPR Article 17, and requests written confirmation within 30 days.\",\n  \"recommended_action\": \"Escalate to the Data Protection Officer/compliance team to process the Right to Erasure request for user usr_98234710, verify deletion of all data, and provide written confirmation within the required timeframe.\"\n}",
+    "is_valid_json": true,
+    "parsed_json": {
+      "category": "Account Access & Security",
+      "urgency": "High",
+      "sentiment": "Neutral",
+      "churn_risk": false,
+      "key_entities": [
+        "usr_98234710",
+        "GDPR Article 17"
+      ],
+      "summary": "The requester asks for the complete deletion or anonymization of all personal data associated with user ID usr_98234710 under GDPR Article 17, and requests written confirmation within 30 days.",
+      "recommended_action": "Escalate to the Data Protection Officer/compliance team to process the Right to Erasure request for user usr_98234710, verify deletion of all data, and provide written confirmation within the required timeframe."
+    },
+    "input_tokens": 644,
+    "output_tokens": 467,
+    "total_tokens": 1111,
+    "latency_ms": 8666.68,
+    "estimated_cost_usd": 0.0003768
+  },
+  {
+    "ticket_id": "TICKET-07",
+    "ticket_title": "Formal GDPR Article 17 erasure request",
+    "ticket_text": "To the Data Protection Officer / Security Team: Under GDPR Article 17, our organization hereby submits a formal Right to Erasure request for user ID usr_98234710. Please provide written confirmation within 30 days that all personal identifiable data, logs, and backups associated with this user have been completely anonymized or deleted.",
+    "version": "V3",
+    "raw_reply": "{\n  \"category\": \"Account Access & Security\",\n  \"urgency\": \"High\",\n  \"sentiment\": \"Neutral\",\n  \"churn_risk\": false,\n  \"key_entities\": [\"GDPR Article 17\", \"user ID usr_98234710\", \"30 days\"],\n  \"summary\": \"Customer submits a GDPR Article 17 Right to Erasure request for user ID usr_98234710 and asks for written confirmation within 30 days that all personal data, logs, and backups have been deleted or anonymized.\",\n  \"recommended_action\": \"Escalate to the Data Protection Officer/compliance team to initiate the erasure workflow for user ID usr_98234710 and provide written confirmation within the 30\u2011day deadline.\"\n}",
+    "is_valid_json": true,
+    "parsed_json": {
+      "category": "Account Access & Security",
+      "urgency": "High",
+      "sentiment": "Neutral",
+      "churn_risk": false,
+      "key_entities": [
+        "GDPR Article 17",
+        "user ID usr_98234710",
+        "30 days"
+      ],
+      "summary": "Customer submits a GDPR Article 17 Right to Erasure request for user ID usr_98234710 and asks for written confirmation within 30 days that all personal data, logs, and backups have been deleted or anonymized.",
+      "recommended_action": "Escalate to the Data Protection Officer/compliance team to initiate the erasure workflow for user ID usr_98234710 and provide written confirmation within the 30\u2011day deadline."
+    },
+    "input_tokens": 1125,
+    "output_tokens": 498,
+    "total_tokens": 1623,
+    "latency_ms": 8704.71,
+    "estimated_cost_usd": 0.00046755
+  },
+  {
+    "ticket_id": "TICKET-08",
+    "ticket_title": "API pagination boundary bug report",
+    "ticket_text": "When calling GET /v1/transactions?limit=100&offset=500 we receive a 400 Bad Request with payload {\"error\": \"invalid_offset_range\"} despite the documentation stating offsets up to 10,000 are permitted. Tested on API version 2026-04. Python snippet attached. Is this a known regression?",
+    "version": "V1",
+    "raw_reply": "**Category:**\u202fAPI\u202fTechnical\u202fIssue (offset handling / regression)  \n**Urgency:**\u202fMedium\u2011High \u2013 the customer cannot retrieve paginated transaction data, which may impact their reporting/operations.  \n**Sentiment:**\u202fFrustrated/Neutral \u2013 the tone is factual but implies disappointment (\u201cIs this a known regression?\u201d).  \n\n**Summary:**  \nThe customer is calling `GET /v1/transactions?limit=100&offset=500` on API version\u202f2026\u201104 and receives a **400 Bad Request** with the error `{\"error\":\"invalid_offset_range\"}`. According to the public documentation, offsets up to **10,000** should be accepted, so this response is unexpected. They have provided a Python snippet that reproduces the issue and are asking whether this is a known regression.\n\n**Recommended Action:**  \n\n1. **Acknowledge** receipt of the ticket promptly and apologize for the inconvenience.  \n2. **Reproduce** the request internally (same API version, limit\u202f100, offset\u202f500) to confirm the error.  \n3. **Investigate** recent changes to the `/v1/transactions` endpoint, especially any deployment after the 2026\u201104 version that might have altered offset validation logic.  \n4. If a regression is confirmed:  \n   - Create an internal bug ticket for the backend team, referencing the error code `invalid_offset_range` and the offset range discrepancy.  \n   - Estimate a fix timeline and prioritize based on impact.  \n5. **Provide a temporary workaround** to the customer (e.g., use smaller offsets or iterate with `limit`\u2011based pagination until the fix is deployed).  \n6. **Communicate** the findings and expected resolution timeframe to the customer, and follow up once the fix is live.  \n\n**Next Steps for Support Team:**  \n- Assign to the API Engineering team for root\u2011cause analysis.  \n- Update the internal knowledge base with any documentation changes needed once the fix is deployed.  \n- Close the ticket after confirming the customer can successfully request offsets up to 10,000.",
+    "is_valid_json": false,
+    "parsed_json": null,
+    "input_tokens": 179,
+    "output_tokens": 540,
+    "total_tokens": 719,
+    "latency_ms": 5648.45,
+    "estimated_cost_usd": 0.00035085
+  },
+  {
+    "ticket_id": "TICKET-08",
+    "ticket_title": "API pagination boundary bug report",
+    "ticket_text": "When calling GET /v1/transactions?limit=100&offset=500 we receive a 400 Bad Request with payload {\"error\": \"invalid_offset_range\"} despite the documentation stating offsets up to 10,000 are permitted. Tested on API version 2026-04. Python snippet attached. Is this a known regression?",
+    "version": "V2",
+    "raw_reply": "{\n  \"category\": \"Technical Bug\",\n  \"urgency\": \"High\",\n  \"sentiment\": \"Frustrated\",\n  \"churn_risk\": false,\n  \"key_entities\": [\n    \"/v1/transactions\",\n    \"limit=100\",\n    \"offset=500\",\n    \"invalid_offset_range\",\n    \"2026-04\"\n  ],\n  \"summary\": \"A GET request to /v1/transactions with limit=100 and offset=500 returns a 400 Bad Request with error \\\"invalid_offset_range\\\" despite documentation allowing offsets up to 10,000 on API version 2026-04.\",\n  \"recommended_action\": \"Escalate to the engineering team to investigate and verify the regression, create a bug ticket, and reply to the customer with an update and expected resolution timeline.\"\n}",
+    "is_valid_json": true,
+    "parsed_json": {
+      "category": "Technical Bug",
+      "urgency": "High",
+      "sentiment": "Frustrated",
+      "churn_risk": false,
+      "key_entities": [
+        "/v1/transactions",
+        "limit=100",
+        "offset=500",
+        "invalid_offset_range",
+        "2026-04"
+      ],
+      "summary": "A GET request to /v1/transactions with limit=100 and offset=500 returns a 400 Bad Request with error \"invalid_offset_range\" despite documentation allowing offsets up to 10,000 on API version 2026-04.",
+      "recommended_action": "Escalate to the engineering team to investigate and verify the regression, create a bug ticket, and reply to the customer with an update and expected resolution timeline."
+    },
+    "input_tokens": 646,
+    "output_tokens": 508,
+    "total_tokens": 1154,
+    "latency_ms": 8718.17,
+    "estimated_cost_usd": 0.0004017
+  },
+  {
+    "ticket_id": "TICKET-08",
+    "ticket_title": "API pagination boundary bug report",
+    "ticket_text": "When calling GET /v1/transactions?limit=100&offset=500 we receive a 400 Bad Request with payload {\"error\": \"invalid_offset_range\"} despite the documentation stating offsets up to 10,000 are permitted. Tested on API version 2026-04. Python snippet attached. Is this a known regression?",
+    "version": "V3",
+    "raw_reply": "{\n  \"category\": \"Technical Bug\",\n  \"urgency\": \"High\",\n  \"sentiment\": \"Frustrated\",\n  \"churn_risk\": false,\n  \"key_entities\": [\n    \"GET /v1/transactions\",\n    \"limit=100\",\n    \"offset=500\",\n    \"400 Bad Request\",\n    \"\\\"invalid_offset_range\\\"\",\n    \"offset up to 10,000\",\n    \"API version 2026-04\",\n    \"Python snippet\"\n  ],\n  \"summary\": \"Customer receives a 400 Bad Request with error \\\"invalid_offset_range\\\" when calling GET /v1/transactions?limit=100&offset=500, despite documentation allowing offsets up to 10,000 on API version 2026-04.\",\n  \"recommended_action\": \"Escalate to the API engineering team to verify if this is a regression, reproduce the issue, and provide a fix or temporary workaround; update the customer with status and expected resolution timeline.\"\n}",
+    "is_valid_json": true,
+    "parsed_json": {
+      "category": "Technical Bug",
+      "urgency": "High",
+      "sentiment": "Frustrated",
+      "churn_risk": false,
+      "key_entities": [
+        "GET /v1/transactions",
+        "limit=100",
+        "offset=500",
+        "400 Bad Request",
+        "\"invalid_offset_range\"",
+        "offset up to 10,000",
+        "API version 2026-04",
+        "Python snippet"
+      ],
+      "summary": "Customer receives a 400 Bad Request with error \"invalid_offset_range\" when calling GET /v1/transactions?limit=100&offset=500, despite documentation allowing offsets up to 10,000 on API version 2026-04.",
+      "recommended_action": "Escalate to the API engineering team to verify if this is a regression, reproduce the issue, and provide a fix or temporary workaround; update the customer with status and expected resolution timeline."
+    },
+    "input_tokens": 1127,
+    "output_tokens": 579,
+    "total_tokens": 1706,
+    "latency_ms": 11660.57,
+    "estimated_cost_usd": 0.00051645
+  },
+  {
+    "ticket_id": "TICKET-09",
+    "ticket_title": "Polite invoice VAT tax ID modification",
+    "ticket_text": "Good morning, our accounting department needs the VAT invoice receipt for invoice #INV-2026-0883 with our European VAT ID DE123456789 listed on the PDF. The dashboard only allows downloading a basic receipt without our tax ID. Could someone update and email it to billing@acme.eu? Thank you!",
+    "version": "V1",
+    "raw_reply": "**Category:** Billing / Invoicing \u2013 VAT invoice amendment request  \n\n**Urgency:** Medium\u2011High (accounting needs the corrected invoice promptly)  \n\n**Sentiment:** Polite and neutral (positive tone)  \n\n**Summary:**  \nThe customer needs a VAT\u2011compliant PDF receipt for invoice **#INV-2026-0883** that includes their European VAT ID **DE123456789**. The current download only provides a basic receipt lacking the tax ID. They have asked for the updated invoice to be emailed to **billing@acme.eu**.\n\n**Recommended Action:**  \n1. Locate invoice #INV-2026-0883 in the system.  \n2. Generate a new VAT invoice PDF that includes the provided VAT ID (DE123456789) and complies with EU invoicing requirements.  \n3. Email the updated PDF to **billing@acme.eu** with a brief confirmation message.  \n4. (Optional) Inform the customer that future invoices can be downloaded with tax details by enabling the \u201cInclude VAT ID\u201d option in their account settings or by contacting support.  \n5. Log the request and mark it as resolved once the email is sent.",
+    "is_valid_json": false,
+    "parsed_json": null,
+    "input_tokens": 176,
+    "output_tokens": 339,
+    "total_tokens": 515,
+    "latency_ms": 3107.22,
+    "estimated_cost_usd": 0.0002298
+  },
+  {
+    "ticket_id": "TICKET-09",
+    "ticket_title": "Polite invoice VAT tax ID modification",
+    "ticket_text": "Good morning, our accounting department needs the VAT invoice receipt for invoice #INV-2026-0883 with our European VAT ID DE123456789 listed on the PDF. The dashboard only allows downloading a basic receipt without our tax ID. Could someone update and email it to billing@acme.eu? Thank you!",
+    "version": "V2",
+    "raw_reply": "{\n  \"category\": \"Billing & Payments\",\n  \"urgency\": \"Medium\",\n  \"sentiment\": \"Neutral\",\n  \"churn_risk\": false,\n  \"key_entities\": [\n    \"INV-2026-0883\",\n    \"DE123456789\",\n    \"billing@acme.eu\"\n  ],\n  \"summary\": \"The customer needs a VAT invoice receipt for invoice #INV-2026-0883 that includes their European VAT ID DE123456789 and requests it be emailed to billing@acme.eu.\",\n  \"recommended_action\": \"Create a VAT\u2011compliant PDF for invoice #INV-2026-0883 with the provided VAT ID and email it to billing@acme.eu, and note the request for future receipt downloads to include tax ID.\"\n}",
+    "is_valid_json": true,
+    "parsed_json": {
+      "category": "Billing & Payments",
+      "urgency": "Medium",
+      "sentiment": "Neutral",
+      "churn_risk": false,
+      "key_entities": [
+        "INV-2026-0883",
+        "DE123456789",
+        "billing@acme.eu"
+      ],
+      "summary": "The customer needs a VAT invoice receipt for invoice #INV-2026-0883 that includes their European VAT ID DE123456789 and requests it be emailed to billing@acme.eu.",
+      "recommended_action": "Create a VAT\u2011compliant PDF for invoice #INV-2026-0883 with the provided VAT ID and email it to billing@acme.eu, and note the request for future receipt downloads to include tax ID."
+    },
+    "input_tokens": 643,
+    "output_tokens": 428,
+    "total_tokens": 1071,
+    "latency_ms": 8721.24,
+    "estimated_cost_usd": 0.00035325
+  },
+  {
+    "ticket_id": "TICKET-09",
+    "ticket_title": "Polite invoice VAT tax ID modification",
+    "ticket_text": "Good morning, our accounting department needs the VAT invoice receipt for invoice #INV-2026-0883 with our European VAT ID DE123456789 listed on the PDF. The dashboard only allows downloading a basic receipt without our tax ID. Could someone update and email it to billing@acme.eu? Thank you!",
+    "version": "V3",
+    "raw_reply": "{\n  \"category\": \"Billing & Payments\",\n  \"urgency\": \"Medium\",\n  \"sentiment\": \"Neutral\",\n  \"churn_risk\": false,\n  \"key_entities\": [\"invoice #INV-2026-0883\", \"VAT ID DE123456789\", \"billing@acme.eu\"],\n  \"summary\": \"Customer requests an updated VAT invoice receipt for invoice #INV-2026-0883 that includes VAT ID DE123456789 and asks for it to be emailed.\",\n  \"recommended_action\": \"Forward request to the billing team to generate a PDF receipt for invoice #INV-2026-0883 with VAT ID DE123456789 and email it to billing@acme.eu.\"\n}",
+    "is_valid_json": true,
+    "parsed_json": {
+      "category": "Billing & Payments",
+      "urgency": "Medium",
+      "sentiment": "Neutral",
+      "churn_risk": false,
+      "key_entities": [
+        "invoice #INV-2026-0883",
+        "VAT ID DE123456789",
+        "billing@acme.eu"
+      ],
+      "summary": "Customer requests an updated VAT invoice receipt for invoice #INV-2026-0883 that includes VAT ID DE123456789 and asks for it to be emailed.",
+      "recommended_action": "Forward request to the billing team to generate a PDF receipt for invoice #INV-2026-0883 with VAT ID DE123456789 and email it to billing@acme.eu."
+    },
+    "input_tokens": 1124,
+    "output_tokens": 375,
+    "total_tokens": 1499,
+    "latency_ms": 9619.3,
+    "estimated_cost_usd": 0.0003936
+  },
+  {
+    "ticket_id": "TICKET-10",
+    "ticket_title": "Sarcastic price hike churn threat",
+    "ticket_text": "Oh brilliant, another unexpected price increase notice right in my inbox. A 40% hike with two weeks notice? Truly stellar customer appreciation. Unless our grandfathered rate of $29/mo is maintained for at least another year, consider this my 30-day notice to migrate over to your competitor.",
+    "version": "V1",
+    "raw_reply": "**Category:** Billing\u202f/\u202fPricing Change (Contract/Rate Adjustment)  \n\n**Urgency:** High \u2013 customer has given a 30\u2011day notice of intent to leave.  \n\n**Sentiment:** Very negative / angry.  \n\n**Summary:**  \nThe customer received a notice of a 40\u202f% price increase with only two weeks\u2019 notice. They feel the change is unfair and are demanding that their existing grandfathered rate of **$29\u202f/\u202fmonth** be honored for at least another year. They have stated that, if the rate is not maintained, they will provide a 30\u2011day notice and migrate to a competitor.\n\n**Recommended Action:**  \n\n1. **Acknowledge & Apologize** \u2013 Respond promptly, expressing genuine regret for the inconvenience and frustration caused by the price change.  \n2. **Clarify Policy** \u2013 Briefly explain the reason for the increase (e.g., inflation, added features) and the standard notice period, but emphasize that the customer\u2019s loyalty is valued.  \n3. **Retention Offer** \u2013 \n   - Immediately check the account eligibility for continued grandfathered pricing.  \n   - If possible, extend the $29\u202f/\u202fmo rate for at least the next 12\u202fmonths (or provide a comparable discounted renewal).  \n   - If the rate cannot be kept, propose a transitional discount, added value (e.g., extra seats, premium support), or a longer notice period to give them time to decide.  \n4. **Escalate** \u2013 Route the ticket to the Retention/Customer Success team for final approval and follow\u2011up, ensuring a senior representative contacts the customer within the next few hours.  \n5. **Document** \u2013 Record the customer\u2019s threat to churn and the agreed\u2011upon resolution in the CRM for future reference.  \n\n**Outcome Goal:** Retain the customer by honoring or replacing the grandfathered rate, demonstrating appreciation for their loyalty, and preventing churn.",
+    "is_valid_json": false,
+    "parsed_json": null,
+    "input_tokens": 171,
+    "output_tokens": 551,
+    "total_tokens": 722,
+    "latency_ms": 3659.33,
+    "estimated_cost_usd": 0.00035625
+  },
+  {
+    "ticket_id": "TICKET-10",
+    "ticket_title": "Sarcastic price hike churn threat",
+    "ticket_text": "Oh brilliant, another unexpected price increase notice right in my inbox. A 40% hike with two weeks notice? Truly stellar customer appreciation. Unless our grandfathered rate of $29/mo is maintained for at least another year, consider this my 30-day notice to migrate over to your competitor.",
+    "version": "V2",
+    "raw_reply": "{\n  \"category\": \"Billing & Payments\",\n  \"urgency\": \"High\",\n  \"sentiment\": \"Angry\",\n  \"churn_risk\": true,\n  \"key_entities\": [\n    \"40% price increase\",\n    \"two weeks notice\",\n    \"$29/mo grandfathered rate\",\n    \"30-day notice to migrate\"\n  ],\n  \"summary\": \"Customer received a notice of a 40% price increase with only two weeks' notice and is demanding the grandfathered $29/month rate be kept for another year, otherwise they will give a 30\u2011day notice to switch to a competitor.\",\n  \"recommended_action\": \"Escalate to the billing/retention team to verify eligibility for maintaining the $29/mo grandfathered rate and respond with a retention offer or clear explanation of the price change.\"\n}",
+    "is_valid_json": true,
+    "parsed_json": {
+      "category": "Billing & Payments",
+      "urgency": "High",
+      "sentiment": "Angry",
+      "churn_risk": true,
+      "key_entities": [
+        "40% price increase",
+        "two weeks notice",
+        "$29/mo grandfathered rate",
+        "30-day notice to migrate"
+      ],
+      "summary": "Customer received a notice of a 40% price increase with only two weeks' notice and is demanding the grandfathered $29/month rate be kept for another year, otherwise they will give a 30\u2011day notice to switch to a competitor.",
+      "recommended_action": "Escalate to the billing/retention team to verify eligibility for maintaining the $29/mo grandfathered rate and respond with a retention offer or clear explanation of the price change."
+    },
+    "input_tokens": 638,
+    "output_tokens": 488,
+    "total_tokens": 1126,
+    "latency_ms": 9523.07,
+    "estimated_cost_usd": 0.0003885
+  },
+  {
+    "ticket_id": "TICKET-10",
+    "ticket_title": "Sarcastic price hike churn threat",
+    "ticket_text": "Oh brilliant, another unexpected price increase notice right in my inbox. A 40% hike with two weeks notice? Truly stellar customer appreciation. Unless our grandfathered rate of $29/mo is maintained for at least another year, consider this my 30-day notice to migrate over to your competitor.",
+    "version": "V3",
+    "raw_reply": "{\n  \"category\": \"Billing & Payments\",\n  \"urgency\": \"High\",\n  \"sentiment\": \"Angry\",\n  \"churn_risk\": true,\n  \"key_entities\": [\"40% hike\", \"two weeks notice\", \"$29/mo\", \"30-day notice\", \"grandfathered rate\", \"competitor\"],\n  \"summary\": \"Customer received a 40% price increase notice with only two weeks' notice and threatens to migrate to a competitor unless the grandfathered $29/mo rate is maintained for at least another year, giving a 30\u2011day notice.\",\n  \"recommended_action\": \"Escalate to the billing/retention team to review the pricing change, offer to honor the $29/mo grandfathered rate or provide a retention incentive, and document the churn risk.\"\n}",
+    "is_valid_json": true,
+    "parsed_json": {
+      "category": "Billing & Payments",
+      "urgency": "High",
+      "sentiment": "Angry",
+      "churn_risk": true,
+      "key_entities": [
+        "40% hike",
+        "two weeks notice",
+        "$29/mo",
+        "30-day notice",
+        "grandfathered rate",
+        "competitor"
+      ],
+      "summary": "Customer received a 40% price increase notice with only two weeks' notice and threatens to migrate to a competitor unless the grandfathered $29/mo rate is maintained for at least another year, giving a 30\u2011day notice.",
+      "recommended_action": "Escalate to the billing/retention team to review the pricing change, offer to honor the $29/mo grandfathered rate or provide a retention incentive, and document the churn risk."
+    },
+    "input_tokens": 1119,
+    "output_tokens": 418,
+    "total_tokens": 1537,
+    "latency_ms": 11376.62,
+    "estimated_cost_usd": 0.00041865
+  }
+]
