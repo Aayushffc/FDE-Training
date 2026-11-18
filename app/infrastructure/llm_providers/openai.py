@@ -1,3 +1,4 @@
+from collections.abc import AsyncIterator
 from time import perf_counter
 from openai import APIError, AsyncOpenAI
 
@@ -20,25 +21,21 @@ class OpenAIProvider(BaseLLMProvider):
     def default_model(self) -> str:
         return settings.default_openai_model
 
+    @property
+    def api_key_env_var(self) -> str:
+        return "OPENAI_API_KEY"
+
+    @property
+    def raw_api_key(self) -> str | None:
+        return settings.openai_api_key
+
     async def generate_chat_completion(
         self,
         payload_or_message: ChatRequest | str,
         system_prompt: str | None = None,
     ) -> ChatResponse:
-        message = (
-            payload_or_message.message
-            if isinstance(payload_or_message, ChatRequest)
-            else payload_or_message
-        )
-        sys_prompt = system_prompt if system_prompt is not None else SYSTEM_PROMPT
-
-        api_key = settings.openai_api_key
-        if api_key is None:
-            raise LLMProviderError(
-                self.provider_name,
-                "OPENAI_API_KEY environment variable is not set.",
-                status_code=503,
-            )
+        message, sys_prompt = self.normalize_inputs(payload_or_message, system_prompt)
+        api_key = self.require_api_key()
 
         model = self.default_model
         started_at = perf_counter()
@@ -108,6 +105,45 @@ class OpenAIProvider(BaseLLMProvider):
             latency_ms=latency_ms,
             estimated_cost_usd=cost,
         )
+
+    async def stream_chat_completion(
+        self,
+        payload_or_message: ChatRequest | str,
+        system_prompt: str | None = None,
+    ) -> AsyncIterator[str]:
+        message, sys_prompt = self.normalize_inputs(payload_or_message, system_prompt)
+        api_key = self.require_api_key()
+
+        model = self.default_model
+        started_at = perf_counter()
+
+        try:
+            async with AsyncOpenAI(
+                api_key=api_key,
+                timeout=settings.request_timeout_seconds,
+            ) as client:
+                stream = await client.chat.completions.create(
+                    model=model,
+                    messages=[
+                        {"role": "system", "content": sys_prompt},
+                        {"role": "user", "content": message},
+                    ],
+                    stream=True,
+                )
+                async for chunk in stream:
+                    if chunk.choices and chunk.choices[0].delta.content:
+                        yield chunk.choices[0].delta.content
+        except (APIError, TimeoutError) as exc:
+            latency_ms = (perf_counter() - started_at) * 1000
+            log_llm_call(
+                provider=self.provider_name,
+                model=model,
+                latency_ms=latency_ms,
+                status="error",
+                error=type(exc).__name__,
+            )
+            raise LLMProviderError.from_upstream(self.provider_name, exc) from exc
+
 
 
 openai_provider = OpenAIProvider()
