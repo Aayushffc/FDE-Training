@@ -24,6 +24,8 @@ start = "app.cli:start"
 test = "app.cli:test"
 test-live = "app.cli:test_live"
 test-all = "app.cli:test_all"
+run-experiments = "app.cli:run_experiments"
+analyze-experiments = "app.cli:analyze_experiments"
 
 [tool.hatch.build.targets.wheel]
 packages = ["app"]

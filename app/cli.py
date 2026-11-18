@@ -50,3 +50,24 @@ def test_live() -> None:
 def test_all() -> None:
     """Run the entire test suite, including live API smoke tests."""
     _run_pytest(["-o", "addopts=-v"])
+
+
+def run_experiments() -> None:
+    """Run the customer support prompt engineering experiments (30 benchmark runs)."""
+    import runpy
+
+    script_path = Path("scripts") / "run_prompt_experiments.py"
+    if not script_path.exists():
+        script_path = Path(__file__).resolve().parent.parent / "scripts" / "run_prompt_experiments.py"
+    runpy.run_path(str(script_path), run_name="__main__")
+
+
+def analyze_experiments() -> None:
+    """Analyze and display prompt engineering benchmark metrics."""
+    import runpy
+
+    script_path = Path("scripts") / "analyze_results.py"
+    if not script_path.exists():
+        script_path = Path(__file__).resolve().parent.parent / "scripts" / "analyze_results.py"
+    runpy.run_path(str(script_path), run_name="__main__")
+

@@ -43,6 +43,12 @@ class TestChatRequestSchema:
         req = ChatRequest(message=max_message, provider="groq")
         assert len(req.message) == MAX_MESSAGE_LENGTH
 
+    def test_prompt_version_optional_accepted(self) -> None:
+        req = ChatRequest(message="Test", prompt_version="v2")
+        assert req.prompt_version == "v2"
+        req_none = ChatRequest(message="Test")
+        assert req_none.prompt_version is None
+
 
 class TestChatResponseSchema:
     def test_valid_response_object_accepted(self) -> None:
@@ -54,10 +60,12 @@ class TestChatResponseSchema:
             output_tokens=10,
             latency_ms=250.5,
             estimated_cost_usd=0.0000065,
+            prompt_version="customer_support/v2",
         )
         assert res.provider == "openai"
         assert res.input_tokens == 15
         assert res.output_tokens == 10
+        assert res.prompt_version == "customer_support/v2"
 
     def test_negative_input_token_count_rejected(self) -> None:
         with pytest.raises(ValidationError):

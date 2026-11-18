@@ -184,3 +184,60 @@ class TestChatEndpoint:
             "provider": "anthropic",
             "detail": "Anthropic request timed out.",
         }
+
+    def test_list_prompts_endpoint(self, client: TestClient) -> None:
+        response = client.get("/v1/chat/prompts")
+        assert response.status_code == 200
+        data = response.json()
+        assert "available_customer_support_versions" in data
+        assert "v1" in data["available_customer_support_versions"]
+        assert "v2" in data["available_customer_support_versions"]
+        assert "v3" in data["available_customer_support_versions"]
+
+        alias_response = client.get("/v1/prompts")
+        assert alias_response.status_code == 200
+        assert alias_response.json() == data
+
+    def test_chat_with_prompt_version_passes_correct_system_prompt(
+        self, client: TestClient, mock_settings: Settings
+    ) -> None:
+        fake_response = SimpleNamespace(
+            model="gpt-6-luna",
+            choices=[SimpleNamespace(message=SimpleNamespace(content="Customer support response"))],
+            usage=SimpleNamespace(prompt_tokens=50, completion_tokens=25),
+        )
+        with patch("app.infrastructure.llm_providers.openai.AsyncOpenAI") as mock_cls:
+            inst = AsyncMock()
+            mock_cls.return_value.__aenter__.return_value = inst
+            inst.chat.completions.create.return_value = fake_response
+
+            response = client.post(
+                "/v1/chat",
+                json={
+                    "message": "My order was broken",
+                    "provider": "openai",
+                    "prompt_version": "v2",
+                },
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["prompt_version"] == "customer_support/v2"
+
+        call_messages = inst.chat.completions.create.call_args.kwargs["messages"]
+        assert call_messages[0]["role"] == "system"
+        assert "Senior Tier-3 Customer Support Operations Analyst" in call_messages[0]["content"]
+
+    def test_chat_with_invalid_prompt_version_returns_400(self, client: TestClient) -> None:
+        response = client.post(
+            "/v1/chat",
+            json={
+                "message": "My order was broken",
+                "provider": "openai",
+                "prompt_version": "v999_invalid",
+            },
+        )
+        assert response.status_code == 400
+        data = response.json()
+        assert data["error"] == "prompt_not_found"
+        assert "v999_invalid" in data["detail"]

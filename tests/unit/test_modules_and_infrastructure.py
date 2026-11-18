@@ -16,6 +16,37 @@ class TestPromptModule:
         assert "concise, accurate, and reliable" in prompt
         assert "Guidelines:" in prompt
 
+    def test_versioned_prompt_library_loads_customer_support_prompts(self) -> None:
+        service = PromptService()
+        v1 = service.load_prompt("customer_support", "v1")
+        v2 = service.load_prompt("customer_support", "v2")
+        v3 = service.load_prompt("customer_support", "v3")
+
+        assert "You are a customer support AI assistant." in v1
+        assert "Senior Tier-3 Customer Support Operations Analyst" in v2
+        assert "EXAMPLES:" in v3
+        assert len(v3) > len(v2) > len(v1)
+
+    def test_versioned_prompt_library_list_versions(self) -> None:
+        service = PromptService()
+        versions = service.list_versions("customer_support")
+        assert versions == ["v1", "v2", "v3"]
+
+    def test_get_system_prompt_supports_category_version_path(self) -> None:
+        service = PromptService()
+        p = service.get_system_prompt("customer_support/v2")
+        assert "Senior Tier-3 Customer Support Operations Analyst" in p
+
+    def test_prompt_service_list_categories_and_all(self) -> None:
+        service = PromptService()
+        categories = service.list_categories()
+        assert "customer_support" in categories
+        all_prompts = service.list_all()
+        assert "customer_support" in all_prompts
+        assert "v1" in all_prompts["customer_support"]
+        assert "v2" in all_prompts["customer_support"]
+        assert "v3" in all_prompts["customer_support"]
+
     def test_prompt_service_caching(self) -> None:
         service = PromptService()
         p1 = service.get_system_prompt("default")
