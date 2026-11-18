@@ -1,7 +1,7 @@
 from typing import Any
 
 from app.infrastructure.llm_providers.registry import LLMProviderRegistry, default_registry
-from app.modules.chat.exceptions import UnsupportedProviderError
+from app.modules.chat.exceptions import PromptNotFoundError, UnsupportedProviderError
 from app.modules.chat.schemas import ChatRequest, ChatResponse
 from app.modules.prompts.service import PromptService, default_prompt_service
 
@@ -23,14 +23,41 @@ class ChatService:
     async def generate_chat_completion(self, payload: ChatRequest) -> ChatResponse:
         # Check if an explicit handler mock has been registered for tests
         if payload.provider in _PROVIDER_HANDLERS:
-            return await _PROVIDER_HANDLERS[payload.provider](payload)
+            res = await _PROVIDER_HANDLERS[payload.provider](payload)
+            if payload.prompt_version and res.prompt_version is None:
+                res.prompt_version = payload.prompt_version
+            return res
 
         provider = self.registry.get(payload.provider)
         if provider is None:
             raise UnsupportedProviderError(payload.provider)
 
-        system_prompt = self.prompt_service.get_system_prompt()
-        return await provider.generate_chat_completion(payload.message, system_prompt=system_prompt)
+        resolved_prompt_version: str | None = None
+        if payload.prompt_version:
+            raw_version = payload.prompt_version.strip()
+            if "/" in raw_version:
+                category, version = raw_version.split("/", 1)
+            else:
+                category = "customer_support"
+                version = raw_version
+
+            try:
+                system_prompt = self.prompt_service.load_prompt(category, version)
+                resolved_prompt_version = f"{category}/{version}"
+            except FileNotFoundError:
+                available = self.prompt_service.list_versions(category)
+                raise PromptNotFoundError(
+                    version=version,
+                    category=category,
+                    available=available,
+                )
+        else:
+            system_prompt = self.prompt_service.get_system_prompt()
+            resolved_prompt_version = "default"
+
+        response = await provider.generate_chat_completion(payload.message, system_prompt=system_prompt)
+        response.prompt_version = resolved_prompt_version
+        return response
 
 
 default_chat_service = ChatService()
