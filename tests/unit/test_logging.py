@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from app.core.logging import ColoredFormatter, log_llm_call, setup_logging
-from app.core.pricing import calculate_cost_usd
+from app.infrastructure.llm_providers.pricing import calculate_cost_usd
 
 
 class TestCostCalculation:
