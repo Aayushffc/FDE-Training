@@ -21,6 +21,10 @@ class ChatRequest(BaseModel):
         default=None,
         description="Optional prompt version to test (e.g., 'v1', 'v2', 'v3', or 'customer_support/v2'). If omitted, the default system prompt is used.",
     )
+    stream: bool = Field(
+        default=False,
+        description="Whether to stream response incrementally as Server-Sent Events (SSE).",
+    )
 
 
 class ChatResponse(BaseModel):
@@ -35,3 +39,13 @@ class ChatResponse(BaseModel):
         default=None,
         description="Prompt version applied to this completion",
     )
+
+
+class StreamChunk(BaseModel):
+    content: str = Field(default="", description="Incremental text token delta")
+    is_complete: bool = Field(default=False, description="Whether this is the final stream termination chunk")
+    provider: Provider | None = None
+    model: str | None = None
+    latency_ms: float | None = None
+    estimated_cost_usd: float | None = None
+    error: str | None = None
