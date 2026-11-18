@@ -5,11 +5,11 @@ import httpx2
 import openai
 import pytest
 
-from app.config import Settings
+from app.core.config import Settings
 from app.core.exceptions import LLMProviderError
-from app.core.prompts import SYSTEM_PROMPT
-from app.schemas.chat import ChatRequest
-from app.services import openai_service
+from app.infrastructure.llm_providers import openai as openai_service
+from app.modules.chat.schemas import ChatRequest
+from app.modules.prompts.service import SYSTEM_PROMPT
 from tests.conftest import override_settings
 
 _DUMMY_REQ = httpx2.Request("POST", "https://api.openai.com/v1/chat/completions")
@@ -25,7 +25,7 @@ class TestOpenAIService:
             choices=[SimpleNamespace(message=SimpleNamespace(content="OpenAI answer"))],
             usage=SimpleNamespace(prompt_tokens=42, completion_tokens=18),
         )
-        with patch("app.services.openai_service.AsyncOpenAI") as mock_cls:
+        with patch("app.infrastructure.llm_providers.openai.AsyncOpenAI") as mock_cls:
             inst = AsyncMock()
             mock_cls.return_value.__aenter__.return_value = inst
             inst.chat.completions.create.return_value = fake_response
@@ -62,7 +62,7 @@ class TestOpenAIService:
 
     async def test_empty_response_raises_502(self, mock_settings: Settings) -> None:
         fake_response = SimpleNamespace(model="gpt-6-luna", choices=[], usage=None)
-        with patch("app.services.openai_service.AsyncOpenAI") as mock_cls:
+        with patch("app.infrastructure.llm_providers.openai.AsyncOpenAI") as mock_cls:
             inst = AsyncMock()
             mock_cls.return_value.__aenter__.return_value = inst
             inst.chat.completions.create.return_value = fake_response
@@ -78,7 +78,7 @@ class TestOpenAIService:
             response=httpx2.Response(429, request=_DUMMY_REQ),
             body=None,
         )
-        with patch("app.services.openai_service.AsyncOpenAI") as mock_cls:
+        with patch("app.infrastructure.llm_providers.openai.AsyncOpenAI") as mock_cls:
             inst = AsyncMock()
             mock_cls.return_value.__aenter__.return_value = inst
             inst.chat.completions.create.side_effect = exc
@@ -95,7 +95,7 @@ class TestOpenAIService:
             response=httpx2.Response(401, request=_DUMMY_REQ),
             body=None,
         )
-        with patch("app.services.openai_service.AsyncOpenAI") as mock_cls:
+        with patch("app.infrastructure.llm_providers.openai.AsyncOpenAI") as mock_cls:
             inst = AsyncMock()
             mock_cls.return_value.__aenter__.return_value = inst
             inst.chat.completions.create.side_effect = exc
@@ -108,7 +108,7 @@ class TestOpenAIService:
 
     async def test_timeout_error_mapped_to_504(self, mock_settings: Settings) -> None:
         exc = openai.APITimeoutError(request=_DUMMY_REQ)
-        with patch("app.services.openai_service.AsyncOpenAI") as mock_cls:
+        with patch("app.infrastructure.llm_providers.openai.AsyncOpenAI") as mock_cls:
             inst = AsyncMock()
             mock_cls.return_value.__aenter__.return_value = inst
             inst.chat.completions.create.side_effect = exc
@@ -124,7 +124,7 @@ class TestOpenAIService:
             response=httpx2.Response(500, request=_DUMMY_REQ),
             body=None,
         )
-        with patch("app.services.openai_service.AsyncOpenAI") as mock_cls:
+        with patch("app.infrastructure.llm_providers.openai.AsyncOpenAI") as mock_cls:
             inst = AsyncMock()
             mock_cls.return_value.__aenter__.return_value = inst
             inst.chat.completions.create.side_effect = exc

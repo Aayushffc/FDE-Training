@@ -4,7 +4,7 @@ from dataclasses import replace
 import pytest
 from fastapi.testclient import TestClient
 
-from app.config import Settings
+from app.core.config import Settings
 from app.main import app
 
 
@@ -15,7 +15,7 @@ def client() -> TestClient:
 
 @pytest.fixture
 def mock_settings(monkeypatch: pytest.MonkeyPatch) -> Generator[Settings, None, None]:
-    """Provide isolated test settings across all provider services."""
+    """Provide isolated test settings across all provider infrastructure adapters."""
     test_cfg = Settings(
         openai_api_key="sk-test-openai-secret-key-12345",
         anthropic_api_key="sk-ant-test-anthropic-secret-key-12345",
@@ -25,17 +25,17 @@ def mock_settings(monkeypatch: pytest.MonkeyPatch) -> Generator[Settings, None, 
         default_groq_model="openai/gpt-oss-120b",
         request_timeout_seconds=10.0,
     )
-    monkeypatch.setattr("app.config.settings", test_cfg)
-    monkeypatch.setattr("app.services.openai_service.settings", test_cfg)
-    monkeypatch.setattr("app.services.anthropic_service.settings", test_cfg)
-    monkeypatch.setattr("app.services.groq_service.settings", test_cfg)
+    monkeypatch.setattr("app.core.config.settings", test_cfg)
+    monkeypatch.setattr("app.infrastructure.llm_providers.openai.settings", test_cfg)
+    monkeypatch.setattr("app.infrastructure.llm_providers.anthropic.settings", test_cfg)
+    monkeypatch.setattr("app.infrastructure.llm_providers.groq.settings", test_cfg)
     yield test_cfg
 
 
 def override_settings(monkeypatch: pytest.MonkeyPatch, base: Settings, **changes) -> Settings:
     updated = replace(base, **changes)
-    monkeypatch.setattr("app.config.settings", updated)
-    monkeypatch.setattr("app.services.openai_service.settings", updated)
-    monkeypatch.setattr("app.services.anthropic_service.settings", updated)
-    monkeypatch.setattr("app.services.groq_service.settings", updated)
+    monkeypatch.setattr("app.core.config.settings", updated)
+    monkeypatch.setattr("app.infrastructure.llm_providers.openai.settings", updated)
+    monkeypatch.setattr("app.infrastructure.llm_providers.anthropic.settings", updated)
+    monkeypatch.setattr("app.infrastructure.llm_providers.groq.settings", updated)
     return updated

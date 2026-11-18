@@ -5,11 +5,11 @@ import anthropic
 import httpx2
 import pytest
 
-from app.config import Settings
+from app.core.config import Settings
 from app.core.exceptions import LLMProviderError
-from app.core.prompts import SYSTEM_PROMPT
-from app.schemas.chat import ChatRequest
-from app.services import anthropic_service
+from app.infrastructure.llm_providers import anthropic as anthropic_service
+from app.modules.chat.schemas import ChatRequest
+from app.modules.prompts.service import SYSTEM_PROMPT
 from tests.conftest import override_settings
 
 _DUMMY_REQ = httpx2.Request("POST", "https://api.anthropic.com/v1/messages")
@@ -29,7 +29,7 @@ class TestAnthropicService:
             ],
             usage=SimpleNamespace(input_tokens=50, output_tokens=20),
         )
-        with patch("app.services.anthropic_service.AsyncAnthropic") as mock_cls:
+        with patch("app.infrastructure.llm_providers.anthropic.AsyncAnthropic") as mock_cls:
             inst = AsyncMock()
             mock_cls.return_value.__aenter__.return_value = inst
             inst.messages.create.return_value = fake_response
@@ -65,10 +65,10 @@ class TestAnthropicService:
     async def test_empty_text_blocks_raises_502(self, mock_settings: Settings) -> None:
         fake_response = SimpleNamespace(
             model="claude-haiku-5-5",
-            content=[],
-            usage=SimpleNamespace(input_tokens=5, output_tokens=0),
+            content=[SimpleNamespace(type="tool_use", text="only tool")],
+            usage=None,
         )
-        with patch("app.services.anthropic_service.AsyncAnthropic") as mock_cls:
+        with patch("app.infrastructure.llm_providers.anthropic.AsyncAnthropic") as mock_cls:
             inst = AsyncMock()
             mock_cls.return_value.__aenter__.return_value = inst
             inst.messages.create.return_value = fake_response
@@ -80,11 +80,11 @@ class TestAnthropicService:
 
     async def test_rate_limit_error_mapped_to_429(self, mock_settings: Settings) -> None:
         exc = anthropic.RateLimitError(
-            "Too many requests",
+            "Rate limit reached",
             response=httpx2.Response(429, request=_DUMMY_REQ),
             body=None,
         )
-        with patch("app.services.anthropic_service.AsyncAnthropic") as mock_cls:
+        with patch("app.infrastructure.llm_providers.anthropic.AsyncAnthropic") as mock_cls:
             inst = AsyncMock()
             mock_cls.return_value.__aenter__.return_value = inst
             inst.messages.create.side_effect = exc
@@ -97,11 +97,11 @@ class TestAnthropicService:
 
     async def test_authentication_error_mapped_to_401(self, mock_settings: Settings) -> None:
         exc = anthropic.AuthenticationError(
-            "Invalid key sk-ant-api03-secretvalue",
+            "Invalid x-api-key: sk-ant-secret12345",
             response=httpx2.Response(401, request=_DUMMY_REQ),
             body=None,
         )
-        with patch("app.services.anthropic_service.AsyncAnthropic") as mock_cls:
+        with patch("app.infrastructure.llm_providers.anthropic.AsyncAnthropic") as mock_cls:
             inst = AsyncMock()
             mock_cls.return_value.__aenter__.return_value = inst
             inst.messages.create.side_effect = exc
@@ -110,11 +110,11 @@ class TestAnthropicService:
                 await anthropic_service.generate_chat_completion(ChatRequest(message="Hi", provider="anthropic"))
 
         assert exc_info.value.status_code == 401
-        assert "sk-ant-api03-secretvalue" not in exc_info.value.message
+        assert "sk-ant-secret12345" not in exc_info.value.message
 
     async def test_timeout_error_mapped_to_504(self, mock_settings: Settings) -> None:
         exc = anthropic.APITimeoutError(request=_DUMMY_REQ)
-        with patch("app.services.anthropic_service.AsyncAnthropic") as mock_cls:
+        with patch("app.infrastructure.llm_providers.anthropic.AsyncAnthropic") as mock_cls:
             inst = AsyncMock()
             mock_cls.return_value.__aenter__.return_value = inst
             inst.messages.create.side_effect = exc
@@ -126,11 +126,11 @@ class TestAnthropicService:
 
     async def test_unexpected_sdk_error_does_not_leak_raw_secret(self, mock_settings: Settings) -> None:
         exc = anthropic.InternalServerError(
-            "Internal failure for credential sk-ant-secret-key-xyz",
+            "Crash while processing sk-ant-live-super-secret-999",
             response=httpx2.Response(500, request=_DUMMY_REQ),
             body=None,
         )
-        with patch("app.services.anthropic_service.AsyncAnthropic") as mock_cls:
+        with patch("app.infrastructure.llm_providers.anthropic.AsyncAnthropic") as mock_cls:
             inst = AsyncMock()
             mock_cls.return_value.__aenter__.return_value = inst
             inst.messages.create.side_effect = exc
@@ -139,5 +139,5 @@ class TestAnthropicService:
                 await anthropic_service.generate_chat_completion(ChatRequest(message="Hi", provider="anthropic"))
 
         assert exc_info.value.status_code == 502
-        assert "sk-ant-secret-key-xyz" not in exc_info.value.message
+        assert "sk-ant-live-super-secret-999" not in exc_info.value.message
         assert "[REDACTED]" in exc_info.value.message

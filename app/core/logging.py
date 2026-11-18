@@ -9,7 +9,7 @@ from pathlib import Path
 from time import perf_counter
 from typing import TYPE_CHECKING
 
-from app.core.pricing import calculate_cost_usd
+from app.infrastructure.llm_providers.pricing import calculate_cost_usd
 
 if TYPE_CHECKING:
     from fastapi import FastAPI, Request, Response

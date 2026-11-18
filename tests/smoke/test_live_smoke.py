@@ -10,9 +10,9 @@ from dotenv import load_dotenv
 from fastapi.testclient import TestClient
 import pytest
 
-from app.config import load_settings
+from app.core.config import load_settings
 from app.main import app
-from app.schemas.chat import ChatResponse
+from app.modules.chat.schemas import ChatResponse
 
 load_dotenv(override=False)
 
@@ -28,10 +28,10 @@ def _has_real_key(key: str | None) -> bool:
 
 def _refresh_live_settings(monkeypatch: pytest.MonkeyPatch):
     live_cfg = load_settings()
-    monkeypatch.setattr("app.config.settings", live_cfg)
-    monkeypatch.setattr("app.services.openai_service.settings", live_cfg)
-    monkeypatch.setattr("app.services.anthropic_service.settings", live_cfg)
-    monkeypatch.setattr("app.services.groq_service.settings", live_cfg)
+    monkeypatch.setattr("app.core.config.settings", live_cfg)
+    monkeypatch.setattr("app.infrastructure.llm_providers.openai.settings", live_cfg)
+    monkeypatch.setattr("app.infrastructure.llm_providers.anthropic.settings", live_cfg)
+    monkeypatch.setattr("app.infrastructure.llm_providers.groq.settings", live_cfg)
     return live_cfg
 
 
@@ -44,7 +44,7 @@ class TestLiveProviderSmoke:
 
         client = TestClient(app)
         response = client.post(
-            "/chat",
+            "/v1/chat",
             json={"message": "Reply with exactly the word: pong", "provider": "openai"},
         )
         assert response.status_code == 200, response.text
@@ -62,7 +62,7 @@ class TestLiveProviderSmoke:
 
         client = TestClient(app)
         response = client.post(
-            "/chat",
+            "/v1/chat",
             json={"message": "Reply with exactly the word: pong", "provider": "anthropic"},
         )
         assert response.status_code == 200, response.text
@@ -80,7 +80,7 @@ class TestLiveProviderSmoke:
 
         client = TestClient(app)
         response = client.post(
-            "/chat",
+            "/v1/chat",
             json={"message": "Reply with exactly the word: pong", "provider": "groq"},
         )
         assert response.status_code == 200, response.text

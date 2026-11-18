@@ -1,8 +1,8 @@
 import pytest
 from pydantic import ValidationError
 
-from app.schemas.chat import MAX_MESSAGE_LENGTH, ChatRequest, ChatResponse
-from app.schemas.health import HealthResponse
+from app.api.v1.endpoints.health import HealthResponse
+from app.modules.chat.schemas import MAX_MESSAGE_LENGTH, ChatRequest, ChatResponse
 
 
 class TestChatRequestSchema:
