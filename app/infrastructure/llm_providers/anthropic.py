@@ -104,6 +104,9 @@ class AnthropicProvider(BaseLLMProvider):
 
         model = self.default_model
         started_at = perf_counter()
+        accumulated_text: list[str] = []
+        input_tokens = max(1, (len(message) + len(sys_prompt)) // 4)
+        output_tokens = 0
 
         try:
             async with AsyncAnthropic(
@@ -117,7 +120,26 @@ class AnthropicProvider(BaseLLMProvider):
                     messages=[{"role": "user", "content": message}],
                 ) as stream:
                     async for text in stream.text_stream:
+                        accumulated_text.append(text)
                         yield text
+
+                    final_msg = await stream.get_final_message()
+                    if hasattr(final_msg, "usage") and final_msg.usage:
+                        input_tokens = getattr(final_msg.usage, "input_tokens", input_tokens)
+                        output_tokens = getattr(final_msg.usage, "output_tokens", output_tokens)
+
+            latency_ms = (perf_counter() - started_at) * 1000
+            if output_tokens == 0:
+                output_tokens = max(1, len("".join(accumulated_text)) // 4)
+
+            log_llm_call(
+                provider=self.provider_name,
+                model=model,
+                latency_ms=latency_ms,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                status="success",
+            )
         except (APIError, TimeoutError) as exc:
             latency_ms = (perf_counter() - started_at) * 1000
             log_llm_call(

@@ -1,197 +1,176 @@
 # FDE Sprint LLM Gateway
 
-A modular, production-ready **FastAPI** gateway wrapping **OpenAI**, **Anthropic**, and **Groq** behind a single normalized contract. Built with **Clean Architecture** separation of concerns, Dependency Inversion, per-request observability, deliberate HTTP status mapping, secret redaction, and a 4-level `pytest` suite.
+A modular, production-grade **FastAPI** gateway wrapping **OpenAI**, **Anthropic**, and **Groq** behind a single normalized contract. Built with **Clean Architecture** separation of concerns, Dependency Inversion, real-time Server-Sent Events (SSE) streaming, autonomous tool calling, versioned prompt management, per-request observability, deliberate HTTP status mapping, secret redaction, and a 4-level test suite.
 
 ---
 
-## Features
+## Architecture & Directory Structure
 
-- **Unified Multi-Provider Gateway** — Route seamlessly across `openai`, `anthropic`, and `groq` via `POST /v1/chat`, receiving normalized responses (`reply`, `model`, `input_tokens`, `output_tokens`, `latency_ms`, `estimated_cost_usd`).
-- **Clean Architecture & Dependency Inversion** — Presentation layer (`app/api/`), application domain capabilities (`app/modules/`), provider adapters (`app/infrastructure/`), and cross-cutting concerns (`app/core/`).
-- **Extensible Provider Registry** — Adapters implement `BaseLLMProvider` and register via `LLMProviderRegistry`, allowing new providers (e.g. Mistral, Bedrock, Cohere) without touching chat business logic.
-- **Dedicated Prompt Management** — `PromptService` loads system prompt templates from `templates/` with caching and fallback support.
-- **Deliberate Error Handling & Secret Redaction** — Maps upstream SDK exceptions to standard HTTP status codes (`400`, `401`, `403`, `429`, `502`, `503`, `504`), converts unexpected exceptions to clean JSON envelopes, and redacts sensitive API keys (`sk-...`, `sk-ant-...`, `gsk_...`, `Bearer ...`).
-- **Production Observability** — Color-coded console logs + single rotating log file (`logs/app.log`, 5 MB max, 3 backups), tracking HTTP access logs and structured JSON `LLM_CALL` records with per-model USD cost calculation.
-- **Developer-Friendly CLI Commands** — Custom scripts defined in `pyproject.toml`: `dev`, `start`, `test`, `test-live`, and `test-all`.
-
----
-
-## Architecture & Dependency Direction
-
-The codebase strictly follows Clean Architecture principles: **The application defines what it needs; infrastructure implements it.**
-
-```mermaid
-flowchart TD
-    subgraph Presentation ["Presentation Layer (app/api/)"]
-        Router["app/api/v1/router.py"]
-        ChatEP["endpoints/chat.py"]
-        HealthEP["endpoints/health.py"]
-        Deps["dependencies.py"]
-    end
-
-    subgraph Modules ["Application & Business Capabilities (app/modules/)"]
-        ChatService["modules/chat/service.py (ChatService)"]
-        ChatSchemas["modules/chat/schemas.py"]
-        PromptService["modules/prompts/service.py"]
-        Agents["modules/agents/ (Future)"]
-    end
-
-    subgraph Infrastructure ["Infrastructure & Adapters (app/infrastructure/)"]
-        Registry["llm_providers/registry.py"]
-        BaseProvider["<<interface>> BaseLLMProvider"]
-        OpenAI["llm_providers/openai.py"]
-        Anthropic["llm_providers/anthropic.py"]
-        Groq["llm_providers/groq.py"]
-        Pricing["llm_providers/pricing.py"]
-    end
-
-    subgraph Core ["Cross-Cutting Concerns (app/core/)"]
-        Config["core/config.py"]
-        Exceptions["core/exceptions.py"]
-        Logging["core/logging.py"]
-    end
-
-    Router --> ChatEP
-    Router --> HealthEP
-    ChatEP --> Deps
-    Deps --> ChatService
-    ChatService --> ChatSchemas
-    ChatService --> PromptService
-    ChatService --> Registry
-    Registry --> BaseProvider
-    OpenAI -.implements.-> BaseProvider
-    Anthropic -.implements.-> BaseProvider
-    Groq -.implements.-> BaseProvider
-    OpenAI --> Pricing
-    Anthropic --> Pricing
-    Groq --> Pricing
-    OpenAI --> Logging
-    Anthropic --> Logging
-    Groq --> Logging
-```
-
-### Directory Structure & Responsibilities
+The project structure strictly follows Clean Architecture principles: **The presentation and application layers define what they need; infrastructure implements it.**
 
 ```text
-fde-llm-gateway/
-├── app/
-│   ├── api/                         # Presentation Layer (FastAPI controllers & routes)
-│   │   └── v1/
-│   │       ├── endpoints/
-│   │       │   ├── chat.py          # POST /chat and POST /v1/chat
-│   │       │   └── health.py        # GET /health and GET /v1/health
-│   │       ├── router.py            # Aggregates endpoints under api_v1_router
-│   │       └── dependencies.py      # Dependency injection providers (get_chat_service)
-│   ├── modules/                     # Application & Business Capabilities
-│   │   ├── chat/
-│   │   │   ├── schemas.py           # ChatRequest, ChatResponse, Provider literal
-│   │   │   ├── service.py           # ChatService orchestration & provider dispatch
-│   │   │   └── exceptions.py        # Domain chat exceptions (UnsupportedProviderError)
-│   │   ├── prompts/
-│   │   │   ├── schemas.py           # PromptTemplate models
-│   │   │   ├── service.py           # PromptService with dynamic versioned template loading
-│   │   │   └── templates/           # Versioned prompt library
-│   │   │       ├── default.txt      # System prompt template
-│   │   │       └── customer_support/ # Customer support versioned prompt suite
-│   │   │           ├── v1.txt       # V1 Basic prompt
-│   │   │           ├── v2.txt       # V2 Detailed instructions with JSON schema
-│   │   │           └── v3.txt       # V3 Detailed instructions + few-shot examples
-│   │   └── agents/                  # Future agent workflows & tool orchestration
-│   ├── infrastructure/              # External Integrations & Adapters
-│   │   ├── llm_providers/
-│   │   │   ├── base.py              # BaseLLMProvider abstract interface
-│   │   │   ├── openai.py            # OpenAI AsyncOpenAI adapter
-│   │   │   ├── anthropic.py         # Anthropic AsyncAnthropic adapter
-│   │   │   ├── groq.py              # Groq AsyncGroq adapter
-│   │   │   ├── pricing.py           # Provider pricing table & USD cost calculator
-│   │   │   └── registry.py          # LLMProviderRegistry (inversion of control)
-│   │   ├── observability/           # Logging & metrics adapters
-│   │   └── persistence/             # Future database & session storage adapters
-│   ├── core/                        # Cross-Cutting Concerns
-│   │   ├── config.py                # Environment Settings dataclass
-│   │   ├── exceptions.py            # AppBaseException, LLMProviderError, secret redactor
-│   │   └── logging.py               # Rotating file, colored formatter, request middleware
-│   ├── cli.py                       # CLI command implementations (dev, start, test, experiments)
-│   └── main.py                      # Application bootstrap, middleware & route mounting
-├── docs/
-│   ├── promt-experiment/            # Prompt engineering evaluation suite
-│   │   ├── prompt-experiments.md    # 30-run benchmark analysis & evaluation report
-│   │   └── prompt_experiments_data.json # Raw benchmark execution dataset
-│   ├── day-logs/                    # Daily development logs
-│   └── provider-comparison.md       # Full comparison matrix of OpenAI, Anthropic, and Groq
-├── scripts/                         # Standalone runner & analysis scripts
-│   ├── run_prompt_experiments.py    # 30-run benchmark runner against live Groq LLM
-│   └── analyze_results.py           # Metric calculator & per-ticket comparison formatter
-├── tests/
-│   ├── conftest.py                  # Shared TestClient & isolated settings fixtures
-│   ├── unit/                        # Schemas, exceptions, prompt service, registry, pricing
-│   ├── api/                         # Endpoints (/health, /docs, /chat, /v1/chat, validation)
-│   ├── integration/                 # Mocked provider adapters (OpenAI, Anthropic, Groq)
-│   └── smoke/                       # Live API smoke tests (@pytest.mark.live)
-├── pyproject.toml                   # Project metadata, dependencies, scripts, pytest config
-├── uv.lock                          # Locked dependency tree
-├── .env.example                     # Environment template
-└── README.md
+📁 fde-llm-gateway/
+  📁 app/                           # Application source
+    📁 api/                         # Presentation Layer (FastAPI routes & controllers)
+      📁 v1/
+        endpoints/chat.py           # Chat, streaming, and tool execution routes
+        endpoints/health.py         # Health check endpoint
+        router.py                   # Aggregates endpoints under api_v1_router (/v1)
+        dependencies.py             # FastAPI dependency injection providers
+    📁 modules/                     # Application & Business Capabilities
+      📁 chat/
+        schemas.py                  # ChatRequest and ChatResponse schemas
+        service.py                  # ChatService business orchestration
+        exceptions.py               # Domain chat exceptions
+      📁 prompts/
+        schemas.py                  # PromptTemplate models
+        service.py                  # Dynamic versioned prompt loader & cache
+        templates/                  # Versioned prompt library (customer_support v1/v2/v3)
+      📁 agents/                    # Agent workflows & tool orchestration
+        schemas.py                  # Tool definitions & execution result schemas
+        service.py                  # AgentToolService provider-agnostic tool loop
+        tools.py                    # Tool declarations & Pydantic argument schemas
+    📁 infrastructure/              # External Integrations & Adapters
+      📁 llm_providers/             # LLM provider implementations
+        base.py                     # BaseLLMProvider abstract contract & DRY utilities
+        openai.py                   # OpenAI AsyncOpenAI adapter
+        anthropic.py                # Anthropic AsyncAnthropic adapter
+        groq.py                     # Groq AsyncGroq adapter
+        pricing.py                  # Per-model pricing catalog & USD calculator
+        registry.py                 # LLMProviderRegistry (Dependency Inversion)
+      📁 observability/             # Metrics and tracing adapters
+      📁 persistence/               # Database and session storage adapters (when needed)
+    📁 core/                        # Cross-Cutting Concerns
+      config.py                     # Pydantic Settings & environment variables
+      exceptions.py                 # Exception hierarchy, handlers & secret redactor
+      logging.py                    # Structured JSON logging, ANSI colors & middleware
+    main.py                         # FastAPI app bootstrap, middleware & /v1 mount
+  📁 tests/
+    📁 unit/                        # Schemas, exceptions, prompt library, registry, tools
+    📁 api/                         # HTTP routes (/health, /chat, /stream, /tools)
+    📁 integration/                 # Mocked provider adapters (OpenAI, Anthropic, Groq)
+    📁 smoke/                       # Live network smoke tests (@pytest.mark.live)
+  📁 docs/                          # Architecture, reliability, evaluations & day logs
+  pyproject.toml                    # Project configuration, dependencies & CLI scripts
+  uv.lock                           # Pinned reproducible dependency graph
+  .env.example                      # Environment configuration template
+  .gitignore                        # Git ignore patterns
+  README.md                         # Project documentation
 ```
+
+### Why These Folders Exist
+
+#### A. `api/` — Presentation Layer
+This is where FastAPI-specific code lives.
+- **Responsibilities:**
+  - Receive HTTP requests and parse route parameters.
+  - Validate request payloads via Pydantic.
+  - Call application logic through dependency injection.
+  - Return HTTP responses and appropriate HTTP status codes.
+  - Handle HTTP-specific concerns (content negotiation, CORS, response headers).
+- **Boundary:** Contains **no** OpenAI/Anthropic/Groq SDK calls, prompt engineering strings, or business decisions. Think of this as the equivalent of your Node.js controllers and routes.
+
+#### B. `modules/` — Application and Business Capabilities
+This is where actual application features and business use cases live.
+- `chat/`: Owns the chat completion use case, input validation, and provider dispatch orchestration.
+- `prompts/`: Owns prompt management, dynamic template loading, category namespaces, and in-memory template caching.
+- `agents/`: Owns autonomous tool calling, multi-turn LLM agent execution loops, and backend function dispatch.
+- **Boundary:** More cohesive and scalable than dumping every business operation into a generic `services/` folder.
+
+#### C. `infrastructure/` — External-World Integrations
+One of the most important architectural boundaries.
+- Adapters translate between the application's expected interface (`BaseLLMProvider`) and external vendor APIs (OpenAI, Anthropic, Groq).
+- If OpenAI changes their SDK or if you swap a provider, application logic inside `modules/` remains untouched.
+- Provider-specific pricing logic lives alongside provider infrastructure rather than polluting core.
+
+#### D. `core/` — Cross-Cutting Concerns
+Shared capabilities used across multiple modules:
+- Configuration and environment management (`config.py`).
+- Centralized exception definitions, global handlers, and secret redaction (`exceptions.py`).
+- Structured logging setup, console formatters, and request middleware (`logging.py`).
 
 ---
 
-## Setup & Installation
+## Core Capabilities
+
+### 1. Unified Multi-Provider Gateway
+Seamlessly route requests across `openai`, `anthropic`, and `groq` through `POST /v1/chat`. Normalized response includes generated text, token usage, latency, and estimated cost in USD.
+
+### 2. Real-Time Streaming Support (SSE)
+Incremental token streaming via Server-Sent Events (`text/event-stream`) through `POST /v1/chat/stream` or `POST /v1/chat` with `"stream": true`. Emits standardized event chunks (`data: {"content": "...", "is_complete": false}`) with full token accounting upon completion.
+
+### 3. Autonomous Tool Calling (Function Calling)
+Enables LLMs to query backend capabilities (e.g. `get_order_status`) via `POST /v1/chat/tools`. The gateway exposes OpenAPI schemas, validates LLM arguments using Pydantic, executes backend functions, feeds results back to the LLM, and returns the grounded answer.
+
+### 4. Versioned Prompt Library
+Dynamic template loading from `app/modules/prompts/templates/customer_support/` (`v1.txt`, `v2.txt`, `v3.txt`). Supports on-the-fly prompt selection via `"prompt_version": "v2"` and discovery via `GET /v1/chat/prompts`.
+
+### 5. Production Observability
+Structured JSON logging in `logs/app.log` tracking provider, model, input/output tokens, latency, cost, and request status across standard, streaming, and tool calls.
+
+---
+
+## Quickstart & Setup
 
 ### Prerequisites
-
 - **Python** `>= 3.11`
-- **[`uv`](https://docs.astral.sh/uv/)** package and project manager
+- **[`uv`](https://docs.astral.sh/uv/)** package manager
 
-### 1. Install dependencies
-
+### 1. Install Dependencies
 ```powershell
 uv sync
 ```
 
-This installs all dependencies and binds the custom CLI scripts (`dev`, `start`, `test`, `test-live`, `test-all`).
-
-### 2. Configure environment variables
-
-Copy `.env.example` to `.env` and fill in your API key(s):
-
+### 2. Configure Environment
+Copy `.env.example` to `.env` and set your API key(s):
 ```powershell
 Copy-Item .env.example .env
 ```
 
 | Variable | Required | Default | Description |
 | :--- | :---: | :--- | :--- |
+| `GROQ_API_KEY` | For `groq` | `None` | Groq API key ([console.groq.com](https://console.groq.com/keys)) |
 | `OPENAI_API_KEY` | For `openai` | `None` | OpenAI API key |
 | `ANTHROPIC_API_KEY` | For `anthropic` | `None` | Anthropic API key |
-| `GROQ_API_KEY` | For `groq` | `None` | Groq API key (free tier supported at [console.groq.com](https://console.groq.com/keys)) |
+| `GROQ_MODEL` | No | `openai/gpt-oss-120b` | Default Groq model |
 | `OPENAI_MODEL` | No | `gpt-6-luna` | Default OpenAI model |
 | `ANTHROPIC_MODEL` | No | `claude-haiku-5-5` | Default Anthropic model |
-| `GROQ_MODEL` | No | `llama-3.3-70b-versatile` | Default Groq model |
-| `REQUEST_TIMEOUT` | No | `30` | Upstream LLM request timeout (seconds) |
-| `APP_ENV` | No | `development` | `development` enables DEBUG + `logs/app.log`; `production` logs INFO to console |
-| `HOST` | No | `127.0.0.1` (`dev`) / `0.0.0.0` (`start`) | Server host |
-| `PORT` | No | `8000` | Server port |
+| `REQUEST_TIMEOUT` | No | `30` | Upstream request timeout (seconds) |
+
+### 3. Start the Server
+```powershell
+# Development mode with hot-reload (127.0.0.1:8000)
+uv run dev
+
+# Production mode (0.0.0.0:8000)
+uv run start
+```
+Interactive Swagger documentation is available at **`http://127.0.0.1:8000/docs`** (root `/` automatically redirects here).
 
 ---
 
-## Running the Server
+## CLI & Demo Commands
 
-| Command | Mode | Description |
+All workflows are pre-configured as runnable commands in `pyproject.toml`:
+
+| Command | Action | Description |
 | :--- | :--- | :--- |
-| `uv run dev` | Development | Runs Uvicorn on `127.0.0.1:8000` with hot-reload watching `app/` and loads `.env` |
-| `uv run start` | Production | Runs Uvicorn on `0.0.0.0:8000` without reload |
-
-Once running, visit **`http://127.0.0.1:8000`** in your browser — it automatically redirects to the interactive Swagger UI at **`/docs`**.
+| `uv run dev` | Server | Start Uvicorn development server with hot-reload |
+| `uv run start` | Server | Start Uvicorn production server |
+| `uv run test` | Testing | Run all 92 automated tests (unit, API, integration) |
+| `uv run test-live` | Testing | Run live API smoke tests against real provider endpoints |
+| `uv run test-all` | Testing | Run all 95 tests (automated + live smoke tests) |
+| `uv run stream-demo` | Demo | Live demonstration of Server-Sent Events (SSE) streaming |
+| `uv run tool-demo` | Demo | Live demonstration of 5-step autonomous tool execution loop |
+| `uv run run-experiments` | Experiments | Execute 30-run prompt engineering benchmark on Groq |
+| `uv run analyze-experiments` | Experiments | Generate comparative report from prompt benchmark data |
 
 ---
 
 ## API Reference
 
 ### Health Check
-
-- `GET /v1/health`
-
-**Response (`200 OK`):**
+- **`GET /v1/health`**
 ```json
 {
   "status": "ok"
@@ -199,12 +178,7 @@ Once running, visit **`http://127.0.0.1:8000`** in your browser — it automatic
 ```
 
 ### Chat Completion
-
-- `POST /v1/chat`
-
-Supports optional `prompt_version` to dynamically select versioned system prompts (e.g. `'v1'`, `'v2'`, `'v3'`, or `'customer_support/v2'`). If omitted, the default system prompt is used.
-
-**Request:**
+- **`POST /v1/chat`**
 ```json
 {
   "message": "My order #12345 arrived damaged, please refund me.",
@@ -212,13 +186,12 @@ Supports optional `prompt_version` to dynamically select versioned system prompt
   "prompt_version": "v2"
 }
 ```
-
 **Response (`200 OK`):**
 ```json
 {
   "provider": "groq",
   "model": "openai/gpt-oss-120b",
-  "reply": "{\n  \"category\": \"Billing & Payments\",\n  \"urgency\": \"High\",\n  \"sentiment\": \"Frustrated\",\n  \"churn_risk\": false,\n  \"key_entities\": [\"#12345\"],\n  \"summary\": \"Customer requests a refund for damaged order #12345.\",\n  \"recommended_action\": \"Review order #12345 and initiate replacement or refund procedure.\"\n}",
+  "reply": "{\n  \"category\": \"Billing & Payments\",\n  \"urgency\": \"High\",\n  \"sentiment\": \"Frustrated\",\n  \"churn_risk\": false,\n  \"key_entities\": [\"#12345\"],\n  \"summary\": \"Customer requests a refund for damaged order #12345.\",\n  \"recommended_action\": \"Initiate replacement or refund procedure.\"\n}",
   "input_tokens": 583,
   "output_tokens": 78,
   "latency_ms": 1535.14,
@@ -227,35 +200,8 @@ Supports optional `prompt_version` to dynamically select versioned system prompt
 }
 ```
 
-### List Available Prompts
-
-- `GET /v1/chat/prompts` (or `GET /v1/prompts`)
-
-Discover available prompt categories and versions for testing without looking at the filesystem.
-
-**Response (`200 OK`):**
-```json
-{
-  "default_category": "customer_support",
-  "available_customer_support_versions": ["v1", "v2", "v3"],
-  "all_categories": {
-    "customer_support": ["v1", "v2", "v3"]
-  },
-  "usage_example": {
-    "message": "My order #12345 arrived damaged, please refund me.",
-    "provider": "groq",
-    "prompt_version": "v2"
-  }
-}
-```
-
-### Server-Sent Events (SSE) Streaming
-
-- `POST /v1/chat/stream` (or `POST /v1/chat` with `"stream": true`)
-
-Streams token chunks incrementally as Server-Sent Events (`text/event-stream`):
-
-**Request:**
+### Real-Time Streaming (SSE)
+- **`POST /v1/chat/stream`** (or `POST /v1/chat` with `"stream": true`)
 ```json
 {
   "message": "Count from 1 to 5.",
@@ -263,8 +209,7 @@ Streams token chunks incrementally as Server-Sent Events (`text/event-stream`):
   "stream": true
 }
 ```
-
-**SSE Stream Output:**
+**Event Stream Output:**
 ```text
 data: {"content": "1", "is_complete": false}
 
@@ -272,49 +217,35 @@ data: {"content": " 2", "is_complete": false}
 
 data: {"content": " 3", "is_complete": false}
 
-data: {"content": " 4", "is_complete": false}
-
-data: {"content": " 5", "is_complete": false}
-
 data: {"content": "", "is_complete": true, "provider": "groq", "latency_ms": 312.4}
 
 data: [DONE]
 ```
 
-### Agent Tool Calling
-
-- `POST /v1/chat/tools`
-
-Allows the LLM to autonomously decide when to call backend tools (e.g. `get_order_status`), validates parameters via Pydantic, executes the function in the backend, and feeds results back to the LLM to synthesize the final response.
-
-**Request:**
+### Tool Calling Endpoint
+- **`POST /v1/chat/tools`**
 ```json
 {
   "message": "What is the status of my order ORD123?",
   "provider": "groq"
 }
 ```
-
 **Response (`200 OK`):**
 ```json
 {
-  "reply": "Here’s the latest information for order ORD123:\n\n- Status: Shipped\n- Carrier: FedEx (Tracking: FX-992817203)\n- Estimated Delivery: 2026-11-20\n- Items: Ergonomic Mechanical Keyboard, Braided USB-C Cable\n- Total: $159.99",
+  "reply": "Order ORD123 has been Shipped via FedEx (Tracking: FX-992817203). Estimated delivery is 2026-11-20.",
   "provider": "groq",
   "model": "openai/gpt-oss-120b",
   "tool_calls": [
     {
       "tool_name": "get_order_status",
-      "arguments": {
-        "order_id": "ORD123"
-      },
+      "arguments": { "order_id": "ORD123" },
       "result": {
         "order_id": "ORD123",
         "status": "Shipped",
         "carrier": "FedEx",
         "tracking_number": "FX-992817203",
-        "estimated_delivery": "2026-11-20",
-        "items": ["Ergonomic Mechanical Keyboard", "Braided USB-C Cable"],
-        "total_usd": 159.99
+        "estimated_delivery": "2026-11-20"
       },
       "execution_latency_ms": 0.07
     }
@@ -323,97 +254,44 @@ Allows the LLM to autonomously decide when to call backend tools (e.g. `get_orde
   "estimated_cost_usd": 0.000192
 }
 ```
-
-- `GET /v1/chat/tools`: Lists declared tools and schemas available for LLM calling.
-
-**PowerShell example:**
-```powershell
-$body = @{ message = "Explain FastAPI in one sentence."; provider = "groq" } | ConvertTo-Json
-Invoke-RestMethod -Uri "http://127.0.0.1:8000/v1/chat" -Method Post -ContentType "application/json" -Body $body
-```
-
-**`curl` example:**
-```bash
-curl -X POST http://127.0.0.1:8000/v1/chat \
-  -H "Content-Type: application/json" \
-  -d '{"message": "Explain FastAPI in one sentence.", "provider": "groq"}'
-```
-
-### Error Handling & Status Codes
-
-All errors return a consistent JSON schema with leaked API keys redacted:
-
-```json
-{
-  "error": "llm_provider_error",
-  "provider": "groq",
-  "detail": "Groq request timed out."
-}
-```
-
-| HTTP Status | Trigger | Code |
-| :---: | :--- | :--- |
-| `400` | Upstream `BadRequestError` / Invalid provider | `llm_provider_error` / `unsupported_provider` |
-| `401` | Upstream `AuthenticationError` (invalid key) | `llm_provider_error` |
-| `403` | Upstream `PermissionDeniedError` | `llm_provider_error` |
-| `422` | Request validation failed or output schema mismatch | `validation_error` / `structured_output_validation_error` |
-| `429` | Upstream `RateLimitError` (rate limit or quota) | `llm_provider_error` |
-| `500` | Unhandled internal server error | `internal_error` |
-| `502` | Upstream connection dropped, DNS failed, or empty choices | `llm_provider_error` |
-| `503` | Provider API key missing from environment | `llm_provider_error` |
-| `504` | Upstream `APITimeoutError` / `TimeoutError` | `llm_provider_error` |
+- **`GET /v1/chat/tools`** — Lists declared tools and schemas available to LLMs.
+- **`GET /v1/chat/prompts`** — Lists available prompt versions and categories.
 
 ---
 
-## Testing
+## Testing & Verification
 
-Tests are organized into 4 architectural levels:
+The test suite covers unit logic, schema contracts, HTTP status code translation, exception mapping, secret redaction, and live provider smoke tests:
 
-| Level | Folder | Scope | Count |
-| :---: | :--- | :--- | :---: |
-| **1** | `tests/unit/` | Schemas, exceptions, prompt library, registry, pricing, logging, tool validation | 40 |
-| **2** | `tests/api/` | Endpoints (`/health`, `/chat`, `/stream`, `/tools`, prompt versions, validation) | 21 |
-| **3** | `tests/integration/` | Mocked OpenAI, Anthropic, and Groq adapters & exception mapping | 21 |
-| **4** | `tests/smoke/` | Real API calls (`@pytest.mark.live`); skips unconfigured keys | 3 |
-
-### Test Commands
-
-| Command | Description |
-| :--- | :--- |
-| `uv run test` | Runs all automated tests (92 tests, **excludes** live network calls) |
-| `uv run test-live` | Runs **only** live API smoke tests (`tests/smoke`) |
-| `uv run test-all` | Runs **every** test (95 tests including live smoke tests) |
-
-Target a specific module or test keyword:
 ```powershell
-uv run test tests/unit
-uv run test tests/api
-uv run test tests/integration
-uv run test -k "rate_limit"
+uv run test
+```
+
+```text
+============================= test session starts =============================
+tests/api/test_chat.py .....................                            [ 22%]
+tests/integration/test_anthropic_service.py .......                     [ 30%]
+tests/integration/test_groq_service.py .......                          [ 38%]
+tests/integration/test_openai_service.py .......                        [ 45%]
+tests/unit/test_agent_tools.py .........                                [ 55%]
+tests/unit/test_exceptions.py ........                                  [ 64%]
+tests/unit/test_logging.py ........                                     [ 71%]
+tests/unit/test_modules_and_infrastructure.py ............              [ 84%]
+tests/unit/test_schemas.py ...............                             [100%]
+====================== 92 passed, 3 deselected in 0.70s =======================
 ```
 
 ---
 
-## Live Demonstrations
+## Documentation Index
 
-Ready-to-run interactive demonstrations for Streaming and Tool Calling:
+Comprehensive guides and architectural records are located in [`docs/`](docs/):
 
-| Command | Capability | Description |
-| :--- | :--- | :--- |
-| `uv run stream-demo` | **Streaming** | Connects to Server-Sent Events (SSE) stream and prints token chunks in real-time with timing metrics |
-| `uv run tool-demo` | **Tool Calling** | Demonstrates the full 5-step loop: User request → LLM tool selection → Backend validation & execution → Final response synthesis |
-| `uv run run-experiments` | **Prompt Experiments** | Executes 30 live benchmark runs (10 identical tickets x V1, V2, V3) on Groq |
-| `uv run analyze-experiments` | **Benchmark Analysis** | Parses `docs/promt-experiment/prompt_experiments_data.json` and prints aggregate + per-ticket comparative analysis |
-
-Alternatively, run via Python directly:
-```powershell
-uv run python scripts/run_prompt_experiments.py
-uv run python scripts/analyze_results.py
-```
-
----
-
-## Documentation
-
-- **[Prompt Engineering Experiments (`docs/promt-experiment/prompt-experiments.md`)](docs/promt-experiment/prompt-experiments.md)** — In-depth evaluation of 3 prompt versions (V1 Basic, V2 Detailed, V3 Few-shot) across 10 benchmark customer support tickets (30 live runs evaluated for correctness, consistency, hallucination, output quality, latency, and token cost).
-- **[Provider Comparison (`docs/provider-comparison.md`)](docs/provider-comparison.md)** — Comprehensive comparison of OpenAI, Anthropic, and Groq across SDKs, pricing, context windows, rate limits, data retention policies, measured latency, and decision matrix.
+- **[API Reliability & Fundamentals (`docs/api-reliability.md`)](docs/api-reliability.md)** — HTTP status codes (`400`, `401`, `403`, `404`, `422`, `429`, `500`, `502`, `503`), Rate limit dimensions (TPM/RPM/RPD), Retries and idempotency, Exponential backoff with Full Jitter, Multi-phase timeouts, and OAuth 2.0 / Enterprise IAM.
+- **[Security, Hallucinations & Injections (`docs/security-and-evaluations.md`)](docs/security-and-evaluations.md)** — Concrete examples, root causes, and mitigations for Hallucinations, Ungrounded Answers, Direct Prompt Injections (jailbreaks), and Indirect Prompt Injections (poisoned external context).
+- **[Architecture Decision Records (`docs/decision-log.md`)](docs/decision-log.md)** — ADR-001 (Server-Sent Events), ADR-002 (Pydantic Tool Calling Schemas), ADR-003 (Pragmatic Clean Architecture), ADR-004 (Versioned Prompt Library), ADR-005 (Upstream Error Mapping & Secret Redaction), and ADR-006 (Strict `/v1` Route Versioning).
+- **[Prompt Engineering Experiments (`docs/promt-experiment/prompt-experiments.md`)](docs/promt-experiment/prompt-experiments.md)** — Evaluation of 3 prompt versions across 10 identical benchmark tickets (30 live runs evaluated for correctness, consistency, hallucinations, and token cost).
+- **[Provider Comparison Matrix (`docs/provider-comparison.md`)](docs/provider-comparison.md)** — Comparison of OpenAI, Anthropic, and Groq across pricing, latency, SDK ergonomics, context windows, and rate limits.
+- **Daily Progress Logs:**
+  - **[Day 1 Log (`docs/day-logs/day1.md`)](docs/day-logs/day1.md)** — Initial multi-provider gateway setup, testing, and observability.
+  - **[Day 2 Log (`docs/day-logs/day2.md`)](docs/day-logs/day2.md)** — Clean Architecture refactor, SSE streaming, tool calling, prompt experiments, and reliability documentation.

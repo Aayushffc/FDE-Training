@@ -116,6 +116,9 @@ class OpenAIProvider(BaseLLMProvider):
 
         model = self.default_model
         started_at = perf_counter()
+        accumulated_text: list[str] = []
+        input_tokens = max(1, (len(message) + len(sys_prompt)) // 4)
+        output_tokens = 0
 
         try:
             async with AsyncOpenAI(
@@ -129,10 +132,29 @@ class OpenAIProvider(BaseLLMProvider):
                         {"role": "user", "content": message},
                     ],
                     stream=True,
+                    stream_options={"include_usage": True},
                 )
                 async for chunk in stream:
+                    if hasattr(chunk, "usage") and chunk.usage:
+                        input_tokens = getattr(chunk.usage, "prompt_tokens", input_tokens)
+                        output_tokens = getattr(chunk.usage, "completion_tokens", output_tokens)
                     if chunk.choices and chunk.choices[0].delta.content:
-                        yield chunk.choices[0].delta.content
+                        text = chunk.choices[0].delta.content
+                        accumulated_text.append(text)
+                        yield text
+
+            latency_ms = (perf_counter() - started_at) * 1000
+            if output_tokens == 0:
+                output_tokens = max(1, len("".join(accumulated_text)) // 4)
+
+            log_llm_call(
+                provider=self.provider_name,
+                model=model,
+                latency_ms=latency_ms,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                status="success",
+            )
         except (APIError, TimeoutError) as exc:
             latency_ms = (perf_counter() - started_at) * 1000
             log_llm_call(
