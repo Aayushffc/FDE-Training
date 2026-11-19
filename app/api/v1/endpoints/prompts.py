@@ -1,8 +1,18 @@
+from typing import List
+
 from fastapi import APIRouter, Depends, HTTPException, Path
+from sqlalchemy.orm import Session
 
 from app.api.v1.dependencies import get_chat_service
+from app.db.session import get_db
 from app.modules.chat.schemas import PromptTemplateDetailResponse
 from app.modules.chat.service import ChatService
+from app.schemas.prompt import (
+    PromptCategoryWithVersions,
+    PromptVersionCreate,
+    PromptVersionRead,
+)
+from app.services.prompt_service import DBPromptService
 
 router = APIRouter(prefix="/prompts", tags=["Prompts"])
 
@@ -25,6 +35,67 @@ async def list_available_prompts(
             "prompt_version": "v2",
         },
     }
+
+
+# Database-backed prompt endpoints
+@router.get(
+    "/db",
+    response_model=List[PromptCategoryWithVersions],
+    summary="List all prompt categories and versions stored in PostgreSQL",
+)
+def list_db_prompts(
+    db: Session = Depends(get_db),
+) -> List[PromptCategoryWithVersions]:
+    """Retrieve all categories along with their prompt versions from the database."""
+    service = DBPromptService(db)
+    return service.list_categories()
+
+
+@router.get(
+    "/db/{category}/{version}",
+    response_model=PromptVersionRead,
+    summary="Get prompt version details from PostgreSQL",
+)
+def get_db_prompt(
+    category: str = Path(..., description="Prompt category namespace (e.g. 'customer_support')"),
+    version: str = Path(..., description="Prompt version (e.g. 'v1', 'v2')"),
+    db: Session = Depends(get_db),
+) -> PromptVersionRead:
+    """Retrieve the complete prompt text and metadata for a specific version in PostgreSQL."""
+    service = DBPromptService(db)
+    prompt = service.get_prompt_version(category, version)
+    if not prompt:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Prompt version '{version}' for category '{category}' was not found in the database.",
+        )
+    return prompt
+
+
+@router.post(
+    "/db",
+    response_model=PromptVersionRead,
+    status_code=201,
+    summary="Create or update a versioned prompt in PostgreSQL",
+)
+def create_db_prompt(
+    payload: PromptVersionCreate,
+    db: Session = Depends(get_db),
+) -> PromptVersionRead:
+    """Insert or update a prompt version in the PostgreSQL database."""
+    service = DBPromptService(db)
+    prompt = service.create_prompt_version(
+        category_name=payload.category_name,
+        version=payload.version,
+        prompt_text=payload.prompt_text,
+        name=payload.name,
+        description=payload.description,
+        variables=payload.variables,
+        is_active=payload.is_active,
+    )
+    db.commit()
+    db.refresh(prompt)
+    return prompt
 
 
 @router.get(

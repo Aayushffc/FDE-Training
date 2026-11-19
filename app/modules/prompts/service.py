@@ -1,72 +1,119 @@
-from pathlib import Path
+from collections.abc import Callable
+from typing import Any, Dict, List, Optional
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
 
-# Path to module-local templates directory
-_TEMPLATES_DIR = Path(__file__).parent / "templates"
-
-# Default fallback if file is not found
-_FALLBACK_SYSTEM_PROMPT = (
-    "You are a concise, accurate, and reliable AI assistant.\n"
-    "Guidelines:\n"
-    "- Answer the user's question directly and clearly without unnecessary filler.\n"
-    "- Be strictly truthful: if you are unsure or lack sufficient context, say so explicitly rather than guessing or fabricating details.\n"
-    "- Use clean formatting (lists, code blocks, or tables) when it improves readability.\n"
-    "- Match the depth of your response to the complexity of the request."
-)
+from app.db.session import SessionLocal
+from app.models.prompt import PromptCategory, PromptVersion
 
 
 class PromptService:
     """
-    Manages versioned prompt templates and system prompts for LLM completions.
-    All prompt templates live in app/modules/prompts/templates/ (e.g. customer_support/v1.txt).
+    Manages versioned prompt templates stored in the database.
+    Queries PostgreSQL (or an active DB session) for categories and versions,
+    with in-memory caching to avoid redundant queries during LLM runs.
     """
 
     def __init__(
         self,
-        templates_dir: Path | None = None,
-        prompts_dir: Path | None = None,
+        db: Optional[Session] = None,
+        session_factory: Optional[Callable[[], Session]] = None,
+        auto_seed_if_empty: bool = True,
     ) -> None:
-        self.templates_dir = templates_dir or prompts_dir or _TEMPLATES_DIR
-        self._cache: dict[str, str] = {}
+        self._db = db
+        self._session_factory = session_factory or SessionLocal
+        self._cache: Dict[str, str] = {}
+        self._auto_seed_if_empty = auto_seed_if_empty
+
+    def _get_session(self) -> Session:
+        if self._db is not None:
+            return self._db
+        if self._session_factory is not None:
+            return self._session_factory()
+        raise RuntimeError("No database session or sessionmaker configured for PromptService.")
+
+    def _ensure_populated(self, session: Session) -> None:
+        """If the database has zero prompts (e.g. fresh in-memory test DB), seed standard prompts."""
+        if not self._auto_seed_if_empty:
+            return
+        try:
+            count = session.scalar(select(func.count(PromptVersion.id)))
+            if count == 0:
+                from scripts.seed_prompts import seed_database
+                seed_database(session)
+        except Exception:
+            pass
 
     def load_prompt(self, category: str, version: str) -> str:
         """
-        Dynamically load a specific versioned prompt from the prompt library.
-        Example: load_prompt("customer_support", "v1") -> loads templates/customer_support/v1.txt
+        Dynamically load a specific versioned prompt from the database.
+        Example: load_prompt("customer_support", "v1") -> queries DB for category='customer_support' and version='v1'
         """
         cache_key = f"{category}/{version}"
         if cache_key in self._cache:
             return self._cache[cache_key]
 
-        target_file = self.templates_dir / category / f"{version}.txt"
-        if not target_file.is_file():
-            raise FileNotFoundError(
-                f"Versioned prompt '{version}' for category '{category}' not found at {target_file}"
+        session = self._get_session()
+        owns_session = self._db is None
+        try:
+            self._ensure_populated(session)
+            stmt = (
+                select(PromptVersion.prompt_text)
+                .join(PromptCategory)
+                .where(
+                    PromptCategory.name == category,
+                    PromptVersion.version == version,
+                    PromptVersion.is_active == True,
+                )
             )
+            prompt_text = session.scalar(stmt)
+            if prompt_text is None:
+                raise FileNotFoundError(
+                    f"Versioned prompt '{version}' for category '{category}' not found in database."
+                )
 
-        content = target_file.read_text(encoding="utf-8").strip()
-        self._cache[cache_key] = content
-        return content
+            content = prompt_text.strip()
+            self._cache[cache_key] = content
+            return content
+        finally:
+            if owns_session:
+                session.close()
 
-    def list_versions(self, category: str) -> list[str]:
-        """List all available versions for a given prompt category."""
-        target_dir = self.templates_dir / category
-        if not target_dir.is_dir():
-            return []
+    def list_versions(self, category: str) -> List[str]:
+        """List all active prompt versions for a given category from the database."""
+        session = self._get_session()
+        owns_session = self._db is None
+        try:
+            self._ensure_populated(session)
+            stmt = (
+                select(PromptVersion.version)
+                .join(PromptCategory)
+                .where(
+                    PromptCategory.name == category,
+                    PromptVersion.is_active == True,
+                )
+                .order_by(PromptVersion.version)
+            )
+            return list(session.scalars(stmt).all())
+        finally:
+            if owns_session:
+                session.close()
 
-        return sorted([f.stem for f in target_dir.glob("*.txt")])
+    def list_categories(self) -> List[str]:
+        """List all prompt category names from the database."""
+        session = self._get_session()
+        owns_session = self._db is None
+        try:
+            self._ensure_populated(session)
+            stmt = select(PromptCategory.name).order_by(PromptCategory.name)
+            return list(session.scalars(stmt).all())
+        finally:
+            if owns_session:
+                session.close()
 
-    def list_categories(self) -> list[str]:
-        """List all available prompt categories."""
-        categories = set()
-        if self.templates_dir.is_dir():
-            for item in self.templates_dir.iterdir():
-                if item.is_dir() and not item.name.startswith((".", "_", "__pycache__")):
-                    categories.add(item.name)
-        return sorted(list(categories))
-
-    def list_all(self) -> dict[str, list[str]]:
-        """List all categories with their available versions."""
-        result = {}
+    def list_all(self) -> Dict[str, List[str]]:
+        """List all categories with their active versions from the database."""
+        result: Dict[str, List[str]] = {}
         for cat in self.list_categories():
             versions = self.list_versions(cat)
             if versions:
@@ -74,7 +121,12 @@ class PromptService:
         return result
 
     def get_system_prompt(self, template_name: str = "default") -> str:
-        """Load a system prompt template by name or path."""
+        """
+        Load a system prompt template by name or path from the database.
+        - "category/version" -> load_prompt(category, version)
+        - "default" -> load_prompt("general", "default")
+        - other name -> searches "general" category first, then any category matching version
+        """
         if "/" in template_name:
             cat, ver = template_name.split("/", 1)
             return self.load_prompt(cat, ver)
@@ -82,18 +134,46 @@ class PromptService:
         if template_name in self._cache:
             return self._cache[template_name]
 
-        template_file = self.templates_dir / f"{template_name}.txt"
-        if template_file.is_file():
-            content = template_file.read_text(encoding="utf-8").strip()
+        session = self._get_session()
+        owns_session = self._db is None
+        try:
+            self._ensure_populated(session)
+            # First search in 'general' category
+            stmt = (
+                select(PromptVersion.prompt_text)
+                .join(PromptCategory)
+                .where(
+                    PromptCategory.name == "general",
+                    PromptVersion.version == template_name,
+                    PromptVersion.is_active == True,
+                )
+            )
+            prompt_text = session.scalar(stmt)
+
+            # If not in general, check any category where version == template_name
+            if prompt_text is None:
+                stmt_any = (
+                    select(PromptVersion.prompt_text)
+                    .where(
+                        PromptVersion.version == template_name,
+                        PromptVersion.is_active == True,
+                    )
+                )
+                prompt_text = session.scalar(stmt_any)
+
+            if prompt_text is None:
+                raise FileNotFoundError(
+                    f"Prompt template '{template_name}' not found in database."
+                )
+
+            content = prompt_text.strip()
             self._cache[template_name] = content
             return content
+        finally:
+            if owns_session:
+                session.close()
 
-        if template_name == "default":
-            return _FALLBACK_SYSTEM_PROMPT
-
-        raise FileNotFoundError(f"Prompt template '{template_name}' not found at {template_file}")
-
-    def format_prompt(self, template_name: str, **kwargs) -> str:
+    def format_prompt(self, template_name: str, **kwargs: Any) -> str:
         template = self.get_system_prompt(template_name)
         return template.format(**kwargs)
 
@@ -103,5 +183,20 @@ class PromptService:
 
 
 default_prompt_service = PromptService()
-SYSTEM_PROMPT = default_prompt_service.get_system_prompt()
 
+
+def _get_system_prompt() -> str:
+    try:
+        return default_prompt_service.get_system_prompt()
+    except Exception:
+        return (
+            "You are a concise, accurate, and reliable AI assistant.\n"
+            "Guidelines:\n"
+            "- Answer the user's question directly and clearly without unnecessary filler.\n"
+            "- Be strictly truthful: if you are unsure or lack sufficient context, say so explicitly rather than guessing or fabricating details.\n"
+            "- Use clean formatting (lists, code blocks, or tables) when it improves readability.\n"
+            "- Match the depth of your response to the complexity of the request."
+        )
+
+
+SYSTEM_PROMPT = _get_system_prompt()

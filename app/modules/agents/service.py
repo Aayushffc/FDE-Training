@@ -25,16 +25,8 @@ class AgentToolService:
         self.prompt_service = prompt_service or default_prompt_service
 
     def get_agent_system_prompt(self) -> str:
-        """Dynamically load the agent order support prompt template from the prompt library."""
-        try:
-            return self.prompt_service.get_system_prompt("agent_order_support")
-        except FileNotFoundError:
-            return (
-                "You are a helpful customer support agent with access to internal store tools. "
-                "When a user asks for order information, tracking, or status, always invoke the "
-                "`get_order_status` tool to fetch authoritative data before replying. "
-                "Do not invent fake order details. Always present the retrieved data clearly and politely."
-            )
+        """Dynamically load the agent order support prompt template from the database."""
+        return self.prompt_service.get_system_prompt("agent_order_support")
 
     async def _execute_tool_loop(
         self,
