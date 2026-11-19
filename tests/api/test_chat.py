@@ -242,7 +242,7 @@ class TestChatEndpoint:
         assert data["error"] == "prompt_not_found"
         assert "v999_invalid" in data["detail"]
 
-    def test_chat_stream_endpoint_returns_sse_stream(
+    def test_chat_stream_via_post_chat_stream_flag_returns_sse_stream(
         self, client: TestClient, mock_settings: Settings
     ) -> None:
         async def fake_stream(*args, **kwargs):
@@ -255,8 +255,8 @@ class TestChatEndpoint:
             inst.chat.completions.create.return_value = fake_stream()
 
             response = client.post(
-                "/v1/chat/stream",
-                json={"message": "Count", "provider": "openai"},
+                "/v1/chat",
+                json={"message": "Count", "provider": "openai", "stream": True},
             )
 
         assert response.status_code == 200
@@ -337,5 +337,120 @@ class TestChatEndpoint:
         assert len(data["tool_calls"]) == 1
         assert data["tool_calls"][0]["tool_name"] == "get_order_status"
         assert data["tool_calls"][0]["result"]["status"] == "Shipped"
+
+    def test_get_prompt_content_endpoint_returns_template_text(self, client: TestClient) -> None:
+        response = client.get("/v1/prompts/customer_support/v2")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["category"] == "customer_support"
+        assert data["version"] == "v2"
+        assert data["file_name"] == "v2.txt"
+        assert "Senior Tier-3 Customer Support Operations Analyst" in data["content"]
+
+    def test_get_prompt_content_default_category_shortcut(self, client: TestClient) -> None:
+        response = client.get("/v1/prompts/v2")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["category"] == "customer_support"
+        assert data["version"] == "v2"
+        assert "Senior Tier-3 Customer Support Operations Analyst" in data["content"]
+
+    def test_get_prompt_content_missing_returns_404(self, client: TestClient) -> None:
+        response = client.get("/v1/prompts/customer_support/v99_missing")
+        assert response.status_code == 404
+        data = response.json()
+        assert "not found" in data["detail"]["detail"].lower()
+
+    def test_dedicated_chat_stream_endpoint_returns_sse_stream(
+        self, client: TestClient, mock_settings: Settings
+    ) -> None:
+        async def fake_stream(*args, **kwargs):
+            for token in ["Line 1", " Line 2"]:
+                yield SimpleNamespace(choices=[SimpleNamespace(delta=SimpleNamespace(content=token))])
+
+        with patch("app.infrastructure.llm_providers.openai.AsyncOpenAI") as mock_cls:
+            inst = AsyncMock()
+            mock_cls.return_value.__aenter__.return_value = inst
+            inst.chat.completions.create.return_value = fake_stream()
+
+            response = client.post(
+                "/v1/chat/stream",
+                json={"message": "Poem", "provider": "openai"},
+            )
+
+        assert response.status_code == 200
+        assert "text/event-stream" in response.headers["content-type"]
+        assert 'data: {"content": "Line 1", "is_complete": false}' in response.text
+        assert 'data: {"content": " Line 2", "is_complete": false}' in response.text
+        assert "data: [DONE]" in response.text
+
+    def test_chat_prompt_version_endpoint_executes_prompt(
+        self, client: TestClient, mock_settings: Settings
+    ) -> None:
+        fake_response = SimpleNamespace(
+            model="gpt-6-luna",
+            choices=[SimpleNamespace(message=SimpleNamespace(content='{"category": "Returns"}'))],
+            usage=SimpleNamespace(prompt_tokens=40, completion_tokens=15),
+        )
+        with patch("app.infrastructure.llm_providers.openai.AsyncOpenAI") as mock_cls:
+            inst = AsyncMock()
+            mock_cls.return_value.__aenter__.return_value = inst
+            inst.chat.completions.create.return_value = fake_response
+
+            response = client.post(
+                "/v1/chat/prompt-version",
+                json={
+                    "message": "Damaged order",
+                    "provider": "openai",
+                    "prompt_version": "v2",
+                },
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["prompt_version"] == "customer_support/v2"
+        assert '{"category": "Returns"}' in data["reply"]
+
+    def test_chat_sentiment_analysis_endpoint_extracts_schema(
+        self, client: TestClient, mock_settings: Settings
+    ) -> None:
+        sentiment_json = (
+            '{\n'
+            '  "category": "Shipping & Delivery",\n'
+            '  "sentiment": "Frustrated",\n'
+            '  "urgency": "High",\n'
+            '  "churn_risk": true,\n'
+            '  "key_entities": ["package", "delay"],\n'
+            '  "summary": "Customer package is late.",\n'
+            '  "recommended_action": "Check courier status."\n'
+            '}'
+        )
+        fake_response = SimpleNamespace(
+            model="gpt-6-luna",
+            choices=[SimpleNamespace(message=SimpleNamespace(content=sentiment_json))],
+            usage=SimpleNamespace(prompt_tokens=60, completion_tokens=35),
+        )
+        with patch("app.infrastructure.llm_providers.openai.AsyncOpenAI") as mock_cls:
+            inst = AsyncMock()
+            mock_cls.return_value.__aenter__.return_value = inst
+            inst.chat.completions.create.return_value = fake_response
+
+            response = client.post(
+                "/v1/chat/sentiment",
+                json={
+                    "text": "My package is 2 weeks late and broken!",
+                    "provider": "openai",
+                },
+            )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["category"] == "Shipping & Delivery"
+        assert data["sentiment"] == "Frustrated"
+        assert data["urgency"] == "High"
+        assert data["churn_risk"] is True
+        assert data["key_entities"] == ["package", "delay"]
+        assert data["recommended_action"] == "Check courier status."
+
 
 

@@ -177,50 +177,158 @@ All workflows are pre-configured as runnable commands in `pyproject.toml`:
 }
 ```
 
-### Chat Completion
+### Conversational Chat (Simple AI Conversation)
 - **`POST /v1/chat`**
+
+Direct conversational interaction with the AI assistant using the default system prompt (no sentiment analysis, pure conversation).
+
+**Request:**
 ```json
 {
-  "message": "My order #12345 arrived damaged, please refund me.",
-  "provider": "groq",
-  "prompt_version": "v2"
+  "message": "Explain what an API Gateway is in three simple sentences.",
+  "provider": "groq"
 }
 ```
+
 **Response (`200 OK`):**
 ```json
 {
   "provider": "groq",
   "model": "openai/gpt-oss-120b",
-  "reply": "{\n  \"category\": \"Billing & Payments\",\n  \"urgency\": \"High\",\n  \"sentiment\": \"Frustrated\",\n  \"churn_risk\": false,\n  \"key_entities\": [\"#12345\"],\n  \"summary\": \"Customer requests a refund for damaged order #12345.\",\n  \"recommended_action\": \"Initiate replacement or refund procedure.\"\n}",
-  "input_tokens": 583,
-  "output_tokens": 78,
-  "latency_ms": 1535.14,
-  "estimated_cost_usd": 0.00029595,
-  "prompt_version": "customer_support/v2"
+  "reply": "An API Gateway is a central entry point that sits between clients and backend microservices. It handles common concerns like routing, authentication, rate limiting, and observability. This simplifies client architecture and shields internal services from direct public exposure.",
+  "input_tokens": 28,
+  "output_tokens": 46,
+  "latency_ms": 380.2,
+  "estimated_cost_usd": 0.000035,
+  "prompt_version": "default"
 }
 ```
 
-### Real-Time Streaming (SSE)
-- **`POST /v1/chat/stream`** (or `POST /v1/chat` with `"stream": true`)
+---
+
+### Real-Time Streaming (Dedicated SSE Stream)
+- **`POST /v1/chat/stream`**
+
+Dedicated streaming endpoint delivering incremental token chunks as Server-Sent Events (`text/event-stream`). Does not require a `stream` boolean parameter in the body.
+
+**Request:**
 ```json
 {
-  "message": "Count from 1 to 5.",
-  "provider": "groq",
-  "stream": true
+  "message": "Write a short 3-line poem about coffee and software engineering.",
+  "provider": "groq"
 }
 ```
+
 **Event Stream Output:**
 ```text
-data: {"content": "1", "is_complete": false}
+data: {"content": "Coffee ", "is_complete": false}
 
-data: {"content": " 2", "is_complete": false}
+data: {"content": "brews ", "is_complete": false}
 
-data: {"content": " 3", "is_complete": false}
+data: {"content": "and ", "is_complete": false}
 
-data: {"content": "", "is_complete": true, "provider": "groq", "latency_ms": 312.4}
+data: {"content": "syntax ", "is_complete": false}
+
+data: {"content": "flows.", "is_complete": false}
+
+data: {"content": "", "is_complete": true, "provider": "groq", "latency_ms": 284.1}
 
 data: [DONE]
 ```
+
+#### How to view real-time unbuffered streaming in your terminal:
+
+1. **Built-in CLI Streaming Demo:**
+   ```powershell
+   uv run stream-demo
+   ```
+2. **Unbuffered `curl.exe` with `-N` (disables buffering):**
+   ```powershell
+   curl.exe -N -X POST http://127.0.0.1:8000/v1/chat/stream `
+     -H "Content-Type: application/json" `
+     -d '{"message": "Write a 4-line poem about space.", "provider": "groq"}'
+   ```
+   *(Note: The `-N` / `--no-buffer` flag is essential on Windows; without it, `curl` or PowerShell will buffer the full stream in memory before printing).*
+
+---
+
+### Prompt Version Testing
+- **`POST /v1/chat/prompt-version`**
+
+Test outputs across different versioned prompt templates (`v1`, `v2`, `v3`, or `customer_support/v2`).
+
+**Request:**
+```json
+{
+  "message": "My shipment #12345 arrived damaged, please refund me.",
+  "provider": "groq",
+  "prompt_version": "v2"
+}
+```
+
+**Response (`200 OK`):**
+```json
+{
+  "provider": "groq",
+  "model": "openai/gpt-oss-120b",
+  "reply": "{\n  \"category\": \"Billing & Payments\",\n  \"urgency\": \"High\",\n  \"sentiment\": \"Frustrated\",\n  \"churn_risk\": false,\n  \"key_entities\": [\"#12345\"],\n  \"summary\": \"Customer requests a refund for damaged shipment #12345.\",\n  \"recommended_action\": \"Review order #12345 and initiate replacement or refund procedure.\"\n}",
+  "prompt_version": "customer_support/v2",
+  "input_tokens": 583,
+  "output_tokens": 78,
+  "latency_ms": 1535.14,
+  "estimated_cost_usd": 0.00029595
+}
+```
+
+---
+
+### Dedicated Sentiment & Ticket Analysis
+- **`POST /v1/chat/sentiment`**
+
+First-class structured analysis for customer support tickets, extracting category, sentiment, urgency, churn risk, key entities, and recommended actions.
+
+**Request:**
+```json
+{
+  "text": "My package arrived two weeks late and was completely broken! I demand an immediate refund.",
+  "provider": "groq"
+}
+```
+
+**Response (`200 OK`):**
+```json
+{
+  "category": "Shipping & Delivery",
+  "sentiment": "Frustrated",
+  "urgency": "High",
+  "churn_risk": true,
+  "key_entities": ["package", "two weeks late", "refund"],
+  "summary": "Customer received a broken package after a two-week delay and requests an immediate refund.",
+  "recommended_action": "Acknowledge transit delay, process an expedited replacement or refund, and issue a $15 service voucher.",
+  "provider": "groq",
+  "model": "openai/gpt-oss-120b",
+  "latency_ms": 512.4,
+  "estimated_cost_usd": 0.000185
+}
+```
+
+---
+
+### Prompt Inspection & Content Retrieval
+- **`GET /v1/prompts`** — Lists all categories and available versions.
+- **`GET /v1/prompts/{category}/{version}`** (or **`GET /v1/prompts/{version}`**) — Retrieves the exact written prompt text from disk.
+
+**Response (`200 OK` from `GET /v1/prompts/customer_support/v2`):**
+```json
+{
+  "category": "customer_support",
+  "version": "v2",
+  "file_name": "v2.txt",
+  "content": "You are a Senior Tier-3 Customer Support Operations Analyst at SwiftShip Logistics.\nAnalyze the customer's support inquiry and output a strictly valid JSON object conforming to this exact schema:\n{\n  \"category\": \"Billing & Payments\" | \"Technical Support\" | \"Shipping & Delivery\" | \"Account Management\" | \"Product Inquiry\",\n  \"urgency\": \"Low\" | \"Medium\" | \"High\" | \"Critical\",\n  \"sentiment\": \"Positive\" | \"Neutral\" | \"Frustrated\" | \"Angry\" | \"Disappointed\",\n  \"churn_risk\": true | false,\n  \"key_entities\": [\"list\", \"of\", \"order IDs, dates, numbers, product names\"],\n  \"summary\": \"Brief 1-sentence issue summary\",\n  \"recommended_action\": \"Actionable next step for support agent\"\n}\nOutput only the JSON object, without markdown formatting or preamble."
+}
+```
+
+---
 
 ### Tool Calling Endpoint
 - **`POST /v1/chat/tools`**

@@ -119,3 +119,19 @@ Initial implementations mounted both `/chat` and `/v1/chat` to maintain backward
 
 ### Decision & Rationale
 All active endpoints are mounted strictly under `/v1`. Legacy root endpoints return 404, preventing silent regressions and maintaining API cleanliness.
+
+---
+
+## ADR-007: Unified Chat Completion Route vs. Dedicated `/stream` Endpoint
+
+### Context
+Clients need to consume both buffered responses (JSON) and real-time token streams (Server-Sent Events). Initially, a separate `/v1/chat/stream` endpoint was evaluated alongside `POST /v1/chat`.
+
+### Alternatives Considered
+1. **Dedicated Endpoint (`POST /v1/chat/stream`):**
+   - *Cons:* Endpoint proliferation; reusing `ChatRequest` led to confusing `"stream": false` payloads on a `/stream` endpoint; requires client code to switch URLs depending on UI mode.
+2. **Unified Endpoint (`POST /v1/chat`) with `stream: bool` Flag [SELECTED]:**
+   - *Pros:* Aligns with the standard OpenAI API design (`/v1/chat/completions`); client SDKs hit a single URL and simply set `"stream": true` when streaming is desired; OpenAPI documentation clearly models both JSON and `text/event-stream` response media types.
+
+### Decision & Rationale
+Consolidated all chat completion requests into **`POST /v1/chat`** and removed `/v1/chat/stream`. When `stream=False`, it yields standard `application/json`; when `stream=True`, it streams `text/event-stream`.
