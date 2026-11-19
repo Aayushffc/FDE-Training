@@ -1,13 +1,12 @@
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, Path
+from fastapi import APIRouter, Depends, HTTPException, Path, Response, status
 from sqlalchemy.orm import Session
 
-from app.api.v1.dependencies import get_chat_service
 from app.db.session import get_db
-from app.modules.chat.schemas import PromptTemplateDetailResponse
-from app.modules.chat.service import ChatService
 from app.schemas.prompt import (
+    PromptCategoryCreate,
+    PromptCategoryRead,
     PromptCategoryWithVersions,
     PromptVersionCreate,
     PromptVersionRead,
@@ -17,72 +16,34 @@ from app.services.prompt_service import PromptService
 router = APIRouter(prefix="/prompts", tags=["Prompts"])
 
 
-@router.get("", summary="List available prompt categories and versions")
-async def list_available_prompts(
-    chat_service: ChatService = Depends(get_chat_service),
-) -> dict:
-    """
-    List all prompt categories and versions available in the versioned prompt library.
-    Use these versions when calling `POST /v1/chat/prompt-version`.
-    """
-    return {
-        "default_category": "customer_support",
-        "available_customer_support_versions": chat_service.prompt_service.list_versions("customer_support"),
-        "all_categories": chat_service.prompt_service.list_all(),
-        "usage_example": {
-            "message": "My order #12345 arrived damaged, please refund me.",
-            "provider": "groq",
-            "prompt_version": "v2",
-        },
-    }
+# ============================================================================
+# Core Prompts (Categories with Versions)
+# ============================================================================
 
-
-# Database-backed prompt endpoints
 @router.get(
-    "/db",
+    "",
     response_model=List[PromptCategoryWithVersions],
     summary="List all prompt categories and versions stored in PostgreSQL",
 )
-def list_db_prompts(
+def list_prompts(
     db: Session = Depends(get_db),
 ) -> List[PromptCategoryWithVersions]:
-    """Retrieve all categories along with their prompt versions from the database."""
+    """Retrieve all prompt categories along with their versions directly from the database."""
     service = PromptService(db)
     return service.get_all_categories_with_versions()
 
 
-@router.get(
-    "/db/{category}/{version}",
-    response_model=PromptVersionRead,
-    summary="Get prompt version details from PostgreSQL",
-)
-def get_db_prompt(
-    category: str = Path(..., description="Prompt category namespace (e.g. 'customer_support')"),
-    version: str = Path(..., description="Prompt version (e.g. 'v1', 'v2')"),
-    db: Session = Depends(get_db),
-) -> PromptVersionRead:
-    """Retrieve the complete prompt text and metadata for a specific version in PostgreSQL."""
-    service = PromptService(db)
-    prompt = service.get_prompt_version(category, version)
-    if not prompt:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Prompt version '{version}' for category '{category}' was not found in the database.",
-        )
-    return prompt
-
-
 @router.post(
-    "/db",
+    "",
     response_model=PromptVersionRead,
-    status_code=201,
+    status_code=status.HTTP_201_CREATED,
     summary="Create or update a versioned prompt in PostgreSQL",
 )
-def create_db_prompt(
+def create_or_update_prompt(
     payload: PromptVersionCreate,
     db: Session = Depends(get_db),
 ) -> PromptVersionRead:
-    """Insert or update a prompt version in the PostgreSQL database."""
+    """Insert or update a versioned prompt template under the specified category in PostgreSQL."""
     service = PromptService(db)
     prompt = service.create_prompt_version(
         category_name=payload.category_name,
@@ -98,53 +59,185 @@ def create_db_prompt(
     return prompt
 
 
+# ============================================================================
+# Prompt Categories Table Endpoints
+# ============================================================================
+
+@router.get(
+    "/categories",
+    response_model=List[PromptCategoryRead],
+    summary="List all prompt categories stored in PostgreSQL",
+)
+def list_categories(
+    db: Session = Depends(get_db),
+) -> List[PromptCategoryRead]:
+    """Retrieve all category records directly from the prompt_categories table."""
+    service = PromptService(db)
+    return service.get_categories()
+
+
+@router.post(
+    "/categories",
+    response_model=PromptCategoryRead,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a new prompt category in PostgreSQL",
+)
+def create_category(
+    payload: PromptCategoryCreate,
+    db: Session = Depends(get_db),
+) -> PromptCategoryRead:
+    """Create a new category in the prompt_categories table."""
+    service = PromptService(db)
+    existing = service.get_category_by_name(payload.name)
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Category '{payload.name}' already exists in the database.",
+        )
+    category = service.create_category(name=payload.name, description=payload.description)
+    db.commit()
+    db.refresh(category)
+    return category
+
+
+@router.get(
+    "/categories/{category_name}",
+    response_model=PromptCategoryWithVersions,
+    summary="Get prompt category details and its versions from PostgreSQL",
+)
+def get_category_by_name(
+    category_name: str = Path(..., description="Unique category namespace, e.g. 'customer_support'"),
+    db: Session = Depends(get_db),
+) -> PromptCategoryWithVersions:
+    """Retrieve a single prompt category and all associated prompt versions by name."""
+    service = PromptService(db)
+    category = service.get_category_by_name(category_name)
+    if not category:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Category '{category_name}' not found in the database.",
+        )
+    return category
+
+
+@router.get(
+    "/categories/{category_name}/versions",
+    response_model=List[PromptVersionRead],
+    summary="List all prompt versions for a given category from PostgreSQL",
+)
+def list_category_versions(
+    category_name: str = Path(..., description="Prompt category namespace, e.g. 'customer_support'"),
+    db: Session = Depends(get_db),
+) -> List[PromptVersionRead]:
+    """Retrieve all prompt versions associated with the given category."""
+    service = PromptService(db)
+    category = service.get_category_by_name(category_name)
+    if not category:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Category '{category_name}' not found in the database.",
+        )
+    return service.get_prompt_versions_by_category(category_name)
+
+
+# ============================================================================
+# Prompt Versions Table Endpoints
+# ============================================================================
+
+@router.get(
+    "/versions/{version_id}",
+    response_model=PromptVersionRead,
+    summary="Get prompt version details by version ID from PostgreSQL",
+)
+def get_version_by_id(
+    version_id: int = Path(..., description="Prompt version primary key ID"),
+    db: Session = Depends(get_db),
+) -> PromptVersionRead:
+    """Retrieve a specific prompt version record by its primary key ID from prompt_versions."""
+    service = PromptService(db)
+    prompt = service.get_prompt_version_by_id(version_id)
+    if not prompt:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Prompt version with ID '{version_id}' was not found in the database.",
+        )
+    return prompt
+
+
+# ============================================================================
+# Category & Version Detail Endpoints
+# ============================================================================
+
 @router.get(
     "/{category}/{version}",
-    response_model=PromptTemplateDetailResponse,
-    summary="Get the raw written content of a versioned prompt template",
+    response_model=PromptVersionRead,
+    summary="Get prompt version details from PostgreSQL",
 )
-async def get_prompt_content(
-    category: str = Path(..., description="Prompt category namespace, e.g. 'customer_support'", examples=["customer_support"]),
-    version: str = Path(..., description="Prompt version identifier, e.g. 'v1', 'v2', 'v3'", examples=["v2"]),
-    chat_service: ChatService = Depends(get_chat_service),
-) -> PromptTemplateDetailResponse:
-    """
-    Retrieve the exact written text and instructions stored inside a specific prompt template file.
-    """
-    try:
-        content = chat_service.prompt_service.load_prompt(category, version)
-        return PromptTemplateDetailResponse(
-            category=category,
-            version=version,
-            file_name=f"{version}.txt",
-            content=content,
-        )
-    except FileNotFoundError:
-        available = chat_service.prompt_service.list_versions(category)
+def get_prompt_version(
+    category: str = Path(..., description="Prompt category namespace (e.g. 'customer_support')"),
+    version: str = Path(..., description="Prompt version identifier (e.g. 'v1', 'v2')"),
+    db: Session = Depends(get_db),
+) -> PromptVersionRead:
+    """Retrieve complete prompt text, metadata, and variables for a specific version in PostgreSQL."""
+    service = PromptService(db)
+    prompt = service.get_prompt_version(category, version)
+    if not prompt:
         raise HTTPException(
-            status_code=404,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail={
                 "error": "prompt_not_found",
-                "detail": f"Prompt template '{version}' not found in category '{category}'.",
-                "available_versions_in_category": available,
+                "detail": f"Prompt version '{version}' for category '{category}' was not found in the database.",
             },
         )
+    return prompt
+
+
+@router.delete(
+    "/{category}/{version}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a prompt version from PostgreSQL",
+)
+def delete_prompt_version(
+    category: str = Path(..., description="Prompt category namespace (e.g. 'customer_support')"),
+    version: str = Path(..., description="Prompt version identifier (e.g. 'v1', 'v2')"),
+    db: Session = Depends(get_db),
+) -> Response:
+    """Delete a versioned prompt record from PostgreSQL."""
+    service = PromptService(db)
+    deleted = service.delete_prompt_version(category, version)
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "error": "prompt_not_found",
+                "detail": f"Prompt version '{version}' for category '{category}' not found in the database.",
+            },
+        )
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get(
     "/{version}",
-    response_model=PromptTemplateDetailResponse,
-    summary="Get the raw written content of a prompt template (defaulting to customer_support category)",
+    response_model=PromptVersionRead,
+    summary="Get prompt version details (shortcut defaulting to customer_support category)",
 )
-async def get_default_category_prompt_content(
-    version: str = Path(..., description="Prompt version, e.g. 'v1', 'v2', 'v3'", examples=["v2"]),
-    chat_service: ChatService = Depends(get_chat_service),
-) -> PromptTemplateDetailResponse:
-    """
-    Convenience shortcut to fetch prompt template text from the default 'customer_support' category.
-    """
-    return await get_prompt_content(
-        category="customer_support",
-        version=version,
-        chat_service=chat_service,
-    )
+def get_default_category_prompt_version(
+    version: str = Path(..., description="Prompt version identifier (e.g. 'v1', 'v2')"),
+    db: Session = Depends(get_db),
+) -> PromptVersionRead:
+    """Convenience shortcut to fetch a prompt version from the default 'customer_support' category."""
+    service = PromptService(db)
+    prompt = service.get_prompt_version("customer_support", version)
+    if not prompt:
+        # Fallback search in 'general' category
+        prompt = service.get_prompt_version("general", version)
+    if not prompt:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "error": "prompt_not_found",
+                "detail": f"Prompt version '{version}' was not found in the default categories in PostgreSQL.",
+            },
+        )
+    return prompt

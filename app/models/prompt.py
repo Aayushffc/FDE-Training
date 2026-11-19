@@ -88,5 +88,13 @@ class PromptVersion(Base):
     def category_name(self) -> Optional[str]:
         return self.category.name if self.category else None
 
+    @property
+    def content(self) -> str:
+        return self.prompt_text
+
+    @property
+    def file_name(self) -> str:
+        return f"{self.version}.txt"
+
     def __repr__(self) -> str:
         return f"<PromptVersion(id={self.id}, category_id={self.category_id}, version='{self.version}')>"

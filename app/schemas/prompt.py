@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any, List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 
 class PromptCategoryBase(BaseModel):
@@ -38,8 +38,15 @@ class PromptVersionRead(PromptVersionBase):
     id: int = Field(..., description="Prompt version primary key ID")
     category_id: int = Field(..., description="Associated category ID")
     category_name: Optional[str] = Field(default=None, description="Associated category name")
+    content: Optional[str] = Field(default=None, description="Prompt template text alias")
+    file_name: Optional[str] = Field(default=None, description="Virtual file identifier alias")
     created_at: datetime
     updated_at: datetime
+
+    @computed_field
+    def category(self) -> Optional[str]:
+        """Convenience alias for category_name."""
+        return self.category_name
 
     model_config = ConfigDict(from_attributes=True)
 

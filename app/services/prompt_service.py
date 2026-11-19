@@ -163,12 +163,113 @@ class PromptService:
             stmt = (
                 select(PromptVersion)
                 .join(PromptCategory)
+                .options(joinedload(PromptVersion.category))
                 .where(
                     PromptCategory.name == category_name,
                     PromptVersion.version == version,
                 )
             )
             return session.scalar(stmt)
+        finally:
+            if owns_session:
+                session.close()
+
+    def get_prompt_version_by_id(self, version_id: int) -> Optional[PromptVersion]:
+        """Retrieve a PromptVersion model instance by its primary key ID."""
+        session = self._get_session()
+        owns_session = self._db is None
+        try:
+            stmt = (
+                select(PromptVersion)
+                .options(joinedload(PromptVersion.category))
+                .where(PromptVersion.id == version_id)
+            )
+            return session.scalar(stmt)
+        finally:
+            if owns_session:
+                session.close()
+
+    def get_prompt_versions_by_category(self, category_name: str) -> List[PromptVersion]:
+        """Retrieve all active or inactive PromptVersion instances for a specific category."""
+        session = self._get_session()
+        owns_session = self._db is None
+        try:
+            stmt = (
+                select(PromptVersion)
+                .join(PromptCategory)
+                .options(joinedload(PromptVersion.category))
+                .where(PromptCategory.name == category_name)
+                .order_by(PromptVersion.id)
+            )
+            return list(session.scalars(stmt).all())
+        finally:
+            if owns_session:
+                session.close()
+
+    def get_categories(self) -> List[PromptCategory]:
+        """Retrieve all PromptCategory instances from the prompt_categories table."""
+        session = self._get_session()
+        owns_session = self._db is None
+        try:
+            stmt = select(PromptCategory).order_by(PromptCategory.id)
+            return list(session.scalars(stmt).all())
+        finally:
+            if owns_session:
+                session.close()
+
+    def get_category_by_name(self, name: str) -> Optional[PromptCategory]:
+        """Retrieve a single PromptCategory by name along with its versions."""
+        session = self._get_session()
+        owns_session = self._db is None
+        try:
+            stmt = (
+                select(PromptCategory)
+                .options(joinedload(PromptCategory.prompt_versions))
+                .where(PromptCategory.name == name)
+            )
+            return session.scalar(stmt)
+        finally:
+            if owns_session:
+                session.close()
+
+    def create_category(self, name: str, description: Optional[str] = None) -> PromptCategory:
+        """Create a new PromptCategory record in PostgreSQL."""
+        session = self._get_session()
+        owns_session = self._db is None
+        try:
+            category = PromptCategory(name=name, description=description)
+            session.add(category)
+            session.flush()
+            if owns_session:
+                session.commit()
+                session.refresh(category)
+            return category
+        finally:
+            if owns_session:
+                session.close()
+
+    def delete_prompt_version(self, category_name: str, version: str) -> bool:
+        """Delete a prompt version from the database and invalidate caches."""
+        session = self._get_session()
+        owns_session = self._db is None
+        try:
+            stmt = (
+                select(PromptVersion)
+                .join(PromptCategory)
+                .where(
+                    PromptCategory.name == category_name,
+                    PromptVersion.version == version,
+                )
+            )
+            pv = session.scalar(stmt)
+            if not pv:
+                return False
+            session.delete(pv)
+            session.flush()
+            self._cache.pop(f"{category_name}/{version}", None)
+            if owns_session:
+                session.commit()
+            return True
         finally:
             if owns_session:
                 session.close()

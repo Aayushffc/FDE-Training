@@ -194,9 +194,9 @@ class TestChatEndpoint:
         assert "v2" in data["available_customer_support_versions"]
         assert "v3" in data["available_customer_support_versions"]
 
-        alias_response = client.get("/v1/prompts")
-        assert alias_response.status_code == 200
-        assert alias_response.json() == data
+        prompt_categories = client.get("/v1/prompts")
+        assert prompt_categories.status_code == 200
+        assert isinstance(prompt_categories.json(), list)
 
     def test_chat_with_prompt_version_passes_correct_system_prompt(
         self, client: TestClient, mock_settings: Settings
