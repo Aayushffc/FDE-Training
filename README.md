@@ -377,16 +377,16 @@ uv run test
 
 ```text
 ============================= test session starts =============================
-tests/api/test_chat.py .....................                            [ 22%]
-tests/integration/test_anthropic_service.py .......                     [ 30%]
-tests/integration/test_groq_service.py .......                          [ 38%]
-tests/integration/test_openai_service.py .......                        [ 45%]
-tests/unit/test_agent_tools.py .........                                [ 55%]
-tests/unit/test_exceptions.py ........                                  [ 64%]
-tests/unit/test_logging.py ........                                     [ 71%]
-tests/unit/test_modules_and_infrastructure.py ............              [ 84%]
+tests/api/test_chat.py ...........................                      [ 27%]
+tests/integration/test_anthropic_service.py .......                     [ 34%]
+tests/integration/test_groq_service.py .......                          [ 41%]
+tests/integration/test_openai_service.py .......                        [ 48%]
+tests/unit/test_agent_tools.py .........                                [ 58%]
+tests/unit/test_exceptions.py ........                                  [ 66%]
+tests/unit/test_logging.py ........                                     [ 73%]
+tests/unit/test_modules_and_infrastructure.py ............              [ 85%]
 tests/unit/test_schemas.py ...............                             [100%]
-====================== 92 passed, 3 deselected in 0.70s =======================
+====================== 98 passed, 3 deselected in 0.90s =======================
 ```
 
 ---
@@ -395,9 +395,10 @@ tests/unit/test_schemas.py ...............                             [100%]
 
 Comprehensive guides and architectural records are located in [`docs/`](docs/):
 
+- **[Deep-Dive Architecture & Learning Guide (`docs/deep-dive-learning-guide.md`)](docs/deep-dive-learning-guide.md)** — **Comprehensive master guide** explaining Clean Architecture, the 5-step autonomous tool calling loop, SSE streaming mechanics, structured sentiment extraction, prompt engineering versions, and hands-on verification commands.
 - **[API Reliability & Fundamentals (`docs/api-reliability.md`)](docs/api-reliability.md)** — HTTP status codes (`400`, `401`, `403`, `404`, `422`, `429`, `500`, `502`, `503`), Rate limit dimensions (TPM/RPM/RPD), Retries and idempotency, Exponential backoff with Full Jitter, Multi-phase timeouts, and OAuth 2.0 / Enterprise IAM.
 - **[Security, Hallucinations & Injections (`docs/security-and-evaluations.md`)](docs/security-and-evaluations.md)** — Concrete examples, root causes, and mitigations for Hallucinations, Ungrounded Answers, Direct Prompt Injections (jailbreaks), and Indirect Prompt Injections (poisoned external context).
-- **[Architecture Decision Records (`docs/decision-log.md`)](docs/decision-log.md)** — ADR-001 (Server-Sent Events), ADR-002 (Pydantic Tool Calling Schemas), ADR-003 (Pragmatic Clean Architecture), ADR-004 (Versioned Prompt Library), ADR-005 (Upstream Error Mapping & Secret Redaction), and ADR-006 (Strict `/v1` Route Versioning).
+- **[Architecture Decision Records (`docs/decision-log.md`)](docs/decision-log.md)** — ADR-001 (Server-Sent Events), ADR-002 (Pydantic Tool Calling Schemas), ADR-003 (Pragmatic Clean Architecture), ADR-004 (Versioned Prompt Library), ADR-005 (Upstream Error Mapping & Secret Redaction), ADR-006 (Strict `/v1` Route Versioning), and ADR-007 (Dedicated Stream Endpoint).
 - **[Prompt Engineering Experiments (`docs/promt-experiment/prompt-experiments.md`)](docs/promt-experiment/prompt-experiments.md)** — Evaluation of 3 prompt versions across 10 identical benchmark tickets (30 live runs evaluated for correctness, consistency, hallucinations, and token cost).
 - **[Provider Comparison Matrix (`docs/provider-comparison.md`)](docs/provider-comparison.md)** — Comparison of OpenAI, Anthropic, and Groq across pricing, latency, SDK ergonomics, context windows, and rate limits.
 - **Daily Progress Logs:**

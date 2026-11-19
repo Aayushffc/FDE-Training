@@ -79,6 +79,7 @@ The foundational LLM gateway implementation is in place, with multiple provider 
 Focus on prompt engineering, prompt management, and structured outputs.
 
 Planned activities:
+
 - Experiment with three different prompt versions using the same test inputs.
 - Create a versioned prompt library.
 - Implement structured output generation with JSON schema and Pydantic validation.

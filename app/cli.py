@@ -82,6 +82,16 @@ def stream_demo() -> None:
     runpy.run_path(str(script_path), run_name="__main__")
 
 
+def stream_client() -> None:
+    """Run the live terminal HTTP streaming client against /v1/chat/stream."""
+    import runpy
+
+    script_path = Path("scripts") / "stream_client.py"
+    if not script_path.exists():
+        script_path = Path(__file__).resolve().parent.parent / "scripts" / "stream_client.py"
+    runpy.run_path(str(script_path), run_name="__main__")
+
+
 def tool_demo() -> None:
     """Run the live LLM tool/function calling demonstration."""
     import runpy
