@@ -26,3 +26,7 @@ async def root() -> RedirectResponse:
 
 # Mount versioned API routes under /v1
 app.include_router(api_v1_router, prefix="/v1")
+
+# Also mount /search directly at root to support POST /search/semantic
+from app.api.v1.endpoints.search import router as search_router
+app.include_router(search_router)

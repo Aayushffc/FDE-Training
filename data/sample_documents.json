@@ -1,0 +1,272 @@
+[
+  {
+    "content": "To reset your forgotten password, navigate to the sign-in screen and click 'Forgot Password'. Enter your registered account email address, and we will dispatch a secure, time-sensitive password reset link. Follow the instructions in the email to define a new password with at least 8 characters including letters, numbers, and symbols.",
+    "metadata": {
+      "category": "account",
+      "source": "faq",
+      "language": "en",
+      "tags": ["password", "reset", "login", "credentials"]
+    }
+  },
+  {
+    "content": "You can configure Two-Factor Authentication (2FA) by navigating to Account Settings > Security > Two-Factor Authentication. Scan the displayed QR code with your preferred authenticator app (such as Google Authenticator, Authy, or 1Password) and enter the 6-digit confirmation code. Make sure to download and securely store your emergency recovery codes.",
+    "metadata": {
+      "category": "account",
+      "source": "faq",
+      "language": "en",
+      "tags": ["2fa", "security", "authenticator", "mfa"]
+    }
+  },
+  {
+    "content": "To change the primary email address linked to your account, visit Account Settings > Profile. Enter your new desired email address and current password for verification. A confirmation email with a verification link will be sent to the new address; click the link within 24 hours to finalize the modification.",
+    "metadata": {
+      "category": "account",
+      "source": "faq",
+      "language": "en",
+      "tags": ["email", "profile", "account", "update"]
+    }
+  },
+  {
+    "content": "If your account is temporarily locked after five consecutive incorrect password attempts, our security protocol automatically enforces a 30-minute cooling-off lockout period. You can bypass the wait time by requesting a password reset from the login screen or by contacting customer support with identity verification.",
+    "metadata": {
+      "category": "account",
+      "source": "faq",
+      "language": "en",
+      "tags": ["lockout", "security", "failed login", "blocked"]
+    }
+  },
+  {
+    "content": "To update your personal profile information including display name, avatar picture, preferred timezone, and phone number, go to Account Settings > Personal Details. Changes are saved instantly and reflected across all collaborative workspace activities and notifications.",
+    "metadata": {
+      "category": "account",
+      "source": "faq",
+      "language": "en",
+      "tags": ["profile", "name", "avatar", "timezone"]
+    }
+  },
+  {
+    "content": "Account ownership transfer is available on all Team and Enterprise plans. The existing owner must navigate to Workspace Settings > Members, select the target user, and choose 'Transfer Ownership'. The new owner must accept the invitation sent to their email to complete the transition.",
+    "metadata": {
+      "category": "account",
+      "source": "faq",
+      "language": "en",
+      "tags": ["ownership", "transfer", "workspace", "admin"]
+    }
+  },
+  {
+    "content": "To permanently delete your account and all associated personal data under GDPR and CCPA rights, navigate to Account Settings > Privacy > Delete Account. This action is irreversible and permanently erases your documents, prompts, configurations, and API credentials after a 7-day grace period.",
+    "metadata": {
+      "category": "account",
+      "source": "faq",
+      "language": "en",
+      "tags": ["delete", "privacy", "gdpr", "data removal"]
+    }
+  },
+  {
+    "content": "You can inspect and terminate active sessions across different devices and browsers. Head to Account Settings > Security > Active Sessions to review IP addresses, browser types, and last active timestamps. Click 'Log Out of All Other Devices' to revoke access everywhere immediately.",
+    "metadata": {
+      "category": "account",
+      "source": "faq",
+      "language": "en",
+      "tags": ["sessions", "security", "devices", "logout"]
+    }
+  },
+  {
+    "content": "We accept major credit and debit cards including Visa, Mastercard, American Express, Discover, and JCB. In select regions, PayPal, Apple Pay, Google Pay, and SEPA bank direct debit transfers are also supported for recurring subscription invoices.",
+    "metadata": {
+      "category": "billing",
+      "source": "faq",
+      "language": "en",
+      "tags": ["payment methods", "credit card", "paypal", "billing"]
+    }
+  },
+  {
+    "content": "If your recurring subscription payment fails, our automated billing engine will retry the transaction three times over the subsequent 7 days. Please verify your card expiration date, billing address, and available funds. You can update your payment method in Billing Settings > Payment Methods at any time.",
+    "metadata": {
+      "category": "billing",
+      "source": "faq",
+      "language": "en",
+      "tags": ["failed payment", "declined", "retry", "grace period"]
+    }
+  },
+  {
+    "content": "To download official tax invoices and itemized payment receipts, navigate to Billing Settings > Invoices. Each past transaction contains a downloadable PDF invoice displaying line items, applicable VAT/GST identification numbers, and payment breakdown.",
+    "metadata": {
+      "category": "billing",
+      "source": "faq",
+      "language": "en",
+      "tags": ["invoice", "receipt", "vat", "tax", "pdf"]
+    }
+  },
+  {
+    "content": "When upgrading or changing your subscription tier mid-cycle, charges are prorated. You are credited for the unused balance of your existing plan and only charged the prorated difference for the remaining days of your billing cycle.",
+    "metadata": {
+      "category": "billing",
+      "source": "faq",
+      "language": "en",
+      "tags": ["proration", "upgrade", "billing cycle", "charges"]
+    }
+  },
+  {
+    "content": "To apply a promotional discount code or referral coupon, open Billing Settings and click 'Add Promo Code' before submitting payment. Valid promotional discounts will automatically deduct from the subtotal of your next invoice.",
+    "metadata": {
+      "category": "billing",
+      "source": "faq",
+      "language": "en",
+      "tags": ["promo code", "discount", "coupon", "billing"]
+    }
+  },
+  {
+    "content": "We offer a 14-day money-back guarantee for all newly initiated monthly and annual subscriptions. If you are unsatisfied with our service, contact billing support within 14 days of your initial purchase to receive a full refund processed back to your original payment method within 5 to 10 business days.",
+    "metadata": {
+      "category": "billing",
+      "source": "faq",
+      "language": "en",
+      "tags": ["refund", "guarantee", "money back", "billing"]
+    }
+  },
+  {
+    "content": "All subscription invoices are denominated in USD by default. For international cards, your issuing financial institution will automatically execute currency conversion based on current interbank exchange rates. Any foreign transaction fees imposed by your bank are outside our control.",
+    "metadata": {
+      "category": "billing",
+      "source": "faq",
+      "language": "en",
+      "tags": ["currency", "usd", "international", "exchange rate"]
+    }
+  },
+  {
+    "content": "To prevent accidental account deactivation caused by an expired primary credit card, you can designate a secondary backup payment method in Billing Settings > Payment Methods. If the primary method declines, the backup card will be charged automatically.",
+    "metadata": {
+      "category": "billing",
+      "source": "faq",
+      "language": "en",
+      "tags": ["backup payment", "credit card", "redundancy", "billing"]
+    }
+  },
+  {
+    "content": "To upgrade your subscription plan from Starter to Pro or Enterprise, visit the Subscription Plans page and select 'Upgrade Plan'. Your new features, elevated API rate limits, and additional vector storage quotas become active immediately.",
+    "metadata": {
+      "category": "subscription",
+      "source": "faq",
+      "language": "en",
+      "tags": ["upgrade", "pro", "enterprise", "plan"]
+    }
+  },
+  {
+    "content": "You can cancel your paid subscription at any time by going to Billing Settings > Subscription and clicking 'Cancel Subscription'. Your premium features and quota allocations will remain active until the end of the current paid billing period, after which no further charges will occur.",
+    "metadata": {
+      "category": "subscription",
+      "source": "faq",
+      "language": "en",
+      "tags": ["cancel", "subscription", "downgrade", "billing"]
+    }
+  },
+  {
+    "content": "When downgrading your subscription to the Free tier, your historical data, prompts, and stored vector documents remain intact. However, if your stored documents exceed the Free tier limit (100 documents), write operations will be paused until usage is reduced or the plan is upgraded.",
+    "metadata": {
+      "category": "subscription",
+      "source": "faq",
+      "language": "en",
+      "tags": ["downgrade", "free tier", "limits", "quota"]
+    }
+  },
+  {
+    "content": "Annual billing plans provide an upfront 20% discount compared to monthly subscriptions. You can switch from monthly to annual billing at any point from Subscription Settings; the remaining value of your current monthly cycle is credited directly toward your annual charge.",
+    "metadata": {
+      "category": "subscription",
+      "source": "faq",
+      "language": "en",
+      "tags": ["annual plan", "discount", "yearly", "savings"]
+    }
+  },
+  {
+    "content": "Team subscriptions support flexible seat management. Workspace administrators can add or remove team member seats at any time from Workspace Settings > Seats. Added seats are billed on a prorated basis for the remainder of the active billing cycle.",
+    "metadata": {
+      "category": "subscription",
+      "source": "faq",
+      "language": "en",
+      "tags": ["seats", "team", "licenses", "workspace"]
+    }
+  },
+  {
+    "content": "We offer a 14-day free trial for our Pro plan with zero upfront credit card commitment required. During the trial period, you receive access to advanced Gemini vector embeddings, semantic search APIs, and priority rate limits.",
+    "metadata": {
+      "category": "subscription",
+      "source": "faq",
+      "language": "en",
+      "tags": ["trial", "free trial", "pro plan", "evaluation"]
+    }
+  },
+  {
+    "content": "Enterprise plans include customized master service agreements (MSA), dedicated Technical Account Managers (TAM), 99.99% uptime Service Level Agreements (SLA), single sign-on (SSO/SAML), and custom vector index retention parameters.",
+    "metadata": {
+      "category": "subscription",
+      "source": "faq",
+      "language": "en",
+      "tags": ["enterprise", "sla", "sso", "tam", "custom contract"]
+    }
+  },
+  {
+    "content": "If you encounter unexpected visual glitches, authentication redirect loops, or stale session state in the web portal, clear your browser cookies and cached site data. Alternatively, try accessing the service in an Incognito or Private browsing window to isolate browser extension conflicts.",
+    "metadata": {
+      "category": "technical support",
+      "source": "faq",
+      "language": "en",
+      "tags": ["browser", "cache", "cookies", "troubleshooting"]
+    }
+  },
+  {
+    "content": "When interacting with our REST APIs, exceeding your plan's request quota will trigger an HTTP 429 Too Many Requests response. Implement exponential backoff retry algorithms with jitter in your client code and inspect the 'Retry-After' response header for recovery timing.",
+    "metadata": {
+      "category": "technical support",
+      "source": "faq",
+      "language": "en",
+      "tags": ["rate limit", "429", "backoff", "api error"]
+    }
+  },
+  {
+    "content": "To generate or rotate API keys, navigate to Developer Settings > API Keys. Ensure that API keys are stored securely in environment variables and never committed to version control. If an API key is accidentally exposed, revoke it immediately from the dashboard.",
+    "metadata": {
+      "category": "technical support",
+      "source": "faq",
+      "language": "en",
+      "tags": ["api key", "tokens", "credentials", "security"]
+    }
+  },
+  {
+    "content": "Webhook deliveries are signed using HMAC-SHA256 signatures passed in the 'X-Signature-SHA256' header. If deliveries fail with non-2xx HTTP status codes, our system retries delivery up to 5 times over 24 hours. Check your endpoint firewall and SSL certificates.",
+    "metadata": {
+      "category": "technical support",
+      "source": "faq",
+      "language": "en",
+      "tags": ["webhooks", "hmac", "signature", "delivery retry"]
+    }
+  },
+  {
+    "content": "Our platform officially supports modern, evergreen web browsers including Google Chrome 110+, Mozilla Firefox 115+, Apple Safari 16+, and Microsoft Edge 110+. Mobile web browsers on iOS and Android are fully responsive for management tasks.",
+    "metadata": {
+      "category": "technical support",
+      "source": "faq",
+      "language": "en",
+      "tags": ["compatibility", "browsers", "chrome", "safari"]
+    }
+  },
+  {
+    "content": "You can export all workspace documents, prompts, and metadata in standard JSON or CSV archive formats. Visit Workspace Settings > Data Management > Export Data to initiate an asynchronous data export. A secure download link will be emailed to the workspace owner upon completion.",
+    "metadata": {
+      "category": "technical support",
+      "source": "faq",
+      "language": "en",
+      "tags": ["export", "data backup", "json", "csv"]
+    }
+  },
+  {
+    "content": "To check real-time system operational status, scheduled maintenance windows, and historical incident post-mortems, bookmark our official status page at status.example.com. You can also subscribe to email or webhook incident notifications.",
+    "metadata": {
+      "category": "technical support",
+      "source": "faq",
+      "language": "en",
+      "tags": ["status page", "uptime", "maintenance", "incidents"]
+    }
+  }
+]
