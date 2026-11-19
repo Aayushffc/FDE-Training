@@ -12,7 +12,7 @@ from app.schemas.prompt import (
     PromptVersionCreate,
     PromptVersionRead,
 )
-from app.services.prompt_service import DBPromptService
+from app.services.prompt_service import PromptService
 
 router = APIRouter(prefix="/prompts", tags=["Prompts"])
 
@@ -47,8 +47,8 @@ def list_db_prompts(
     db: Session = Depends(get_db),
 ) -> List[PromptCategoryWithVersions]:
     """Retrieve all categories along with their prompt versions from the database."""
-    service = DBPromptService(db)
-    return service.list_categories()
+    service = PromptService(db)
+    return service.get_all_categories_with_versions()
 
 
 @router.get(
@@ -62,7 +62,7 @@ def get_db_prompt(
     db: Session = Depends(get_db),
 ) -> PromptVersionRead:
     """Retrieve the complete prompt text and metadata for a specific version in PostgreSQL."""
-    service = DBPromptService(db)
+    service = PromptService(db)
     prompt = service.get_prompt_version(category, version)
     if not prompt:
         raise HTTPException(
@@ -83,7 +83,7 @@ def create_db_prompt(
     db: Session = Depends(get_db),
 ) -> PromptVersionRead:
     """Insert or update a prompt version in the PostgreSQL database."""
-    service = DBPromptService(db)
+    service = PromptService(db)
     prompt = service.create_prompt_version(
         category_name=payload.category_name,
         version=payload.version,

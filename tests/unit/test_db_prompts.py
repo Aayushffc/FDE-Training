@@ -8,7 +8,7 @@ from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
 from app.models.prompt import PromptCategory, PromptVersion
-from app.services.prompt_service import DBPromptService
+from app.services.prompt_service import PromptService
 
 
 # Create an in-memory SQLite database for unit tests
@@ -42,7 +42,7 @@ def client(db_session):
 
 class TestDBPromptService:
     def test_create_and_retrieve_category(self, db_session):
-        service = DBPromptService(db_session)
+        service = PromptService(db_session)
         category = service.get_or_create_category(
             name="rag_synthesis",
             description="Prompts tailored for RAG grounding",
@@ -55,7 +55,7 @@ class TestDBPromptService:
         assert same_cat.id == category.id
 
     def test_create_and_retrieve_prompt_version(self, db_session):
-        service = DBPromptService(db_session)
+        service = PromptService(db_session)
         prompt_text = "You are a grounding assistant. Only use retrieved context."
         version = service.create_prompt_version(
             category_name="rag_synthesis",
@@ -77,7 +77,7 @@ class TestDBPromptService:
         assert fetched.prompt_text == prompt_text
 
     def test_update_existing_prompt_version(self, db_session):
-        service = DBPromptService(db_session)
+        service = PromptService(db_session)
         service.create_prompt_version(
             category_name="support",
             version="v1",
@@ -93,7 +93,7 @@ class TestDBPromptService:
         assert updated.description == "Revised guidelines"
 
     def test_list_categories_and_versions(self, db_session):
-        service = DBPromptService(db_session)
+        service = PromptService(db_session)
         service.create_prompt_version(
             category_name="cat_a",
             version="v1",
@@ -112,13 +112,15 @@ class TestDBPromptService:
 
         categories = service.list_categories()
         assert len(categories) == 2
-        names = [c.name for c in categories]
-        assert "cat_a" in names
-        assert "cat_b" in names
+        assert "cat_a" in categories
+        assert "cat_b" in categories
 
-        cat_a_versions = service.list_versions_by_category("cat_a")
+        cat_models = service.get_all_categories_with_versions()
+        assert len(cat_models) == 2
+
+        cat_a_versions = service.list_versions("cat_a")
         assert len(cat_a_versions) == 2
-        assert [v.version for v in cat_a_versions] == ["v1", "v2"]
+        assert cat_a_versions == ["v1", "v2"]
 
 
 class TestDBPromptAPIEndpoints:
