@@ -188,6 +188,26 @@ class PromptService:
             if owns_session:
                 session.close()
 
+    def get_or_create_category(self, name: str, description: Optional[str] = None) -> PromptCategory:
+        """Find an existing category or create a new one."""
+        session = self._get_session()
+        owns_session = self._db is None
+        try:
+            category = session.scalar(
+                select(PromptCategory).where(PromptCategory.name == name)
+            )
+            if not category:
+                category = PromptCategory(name=name, description=description)
+                session.add(category)
+                session.flush()
+                if owns_session:
+                    session.commit()
+                    session.refresh(category)
+            return category
+        finally:
+            if owns_session:
+                session.close()
+
     def create_prompt_version(
         self,
         category_name: str,
@@ -202,13 +222,7 @@ class PromptService:
         session = self._get_session()
         owns_session = self._db is None
         try:
-            category = session.scalar(
-                select(PromptCategory).where(PromptCategory.name == category_name)
-            )
-            if not category:
-                category = PromptCategory(name=category_name)
-                session.add(category)
-                session.flush()
+            category = self.get_or_create_category(name=category_name)
 
             existing = session.scalar(
                 select(PromptVersion).where(
