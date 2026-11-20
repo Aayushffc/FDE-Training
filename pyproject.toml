@@ -34,6 +34,9 @@ run-experiments = "app.cli:run_experiments"
 analyze-experiments = "app.cli:analyze_experiments"
 stream-demo = "app.cli:stream_demo"
 tool-demo = "app.cli:tool_demo"
+seed-chunks = "app.cli:seed_chunks_cli"
+chunk-experiment = "app.cli:chunk_experiment_cli"
+compare-chunks = "app.cli:compare_chunks_cli"
 
 [tool.hatch.build.targets.wheel]
 packages = ["app"]

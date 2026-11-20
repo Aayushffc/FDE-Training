@@ -102,3 +102,34 @@ def tool_demo() -> None:
     runpy.run_path(str(script_path), run_name="__main__")
 
 
+def seed_chunks_cli() -> None:
+    """Seed documents and document_chunks into PostgreSQL with Gemini 768-dim embeddings."""
+    import runpy
+
+    script_path = Path("scripts") / "seed_chunks.py"
+    if not script_path.exists():
+        script_path = Path(__file__).resolve().parent.parent / "scripts" / "seed_chunks.py"
+    runpy.run_path(str(script_path), run_name="__main__")
+
+
+def chunk_experiment_cli() -> None:
+    """Run chunk size and overlap comparison experiments across 3 configurations."""
+    import runpy
+
+    script_path = Path("scripts") / "experiment_chunking.py"
+    if not script_path.exists():
+        script_path = Path(__file__).resolve().parent.parent / "scripts" / "experiment_chunking.py"
+    runpy.run_path(str(script_path), run_name="__main__")
+
+
+def compare_chunks_cli() -> None:
+    """Execute benchmark comparison of Keyword vs Vector vs Hybrid retrieval over chunks."""
+    import runpy
+
+    script_path = Path("scripts") / "compare_chunk_searches.py"
+    if not script_path.exists():
+        script_path = Path(__file__).resolve().parent.parent / "scripts" / "compare_chunk_searches.py"
+    runpy.run_path(str(script_path), run_name="__main__")
+
+
+
