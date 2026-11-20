@@ -10,7 +10,7 @@ from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
 from app.models.document import Document
-from app.schemas.search import SemanticSearchRequest
+from app.schemas.search import KeywordSearchRequest, SemanticSearchRequest
 from app.services.embedding_service import GeminiEmbeddingService
 from app.services.search_service import SearchService
 
@@ -27,11 +27,6 @@ def search_db_session():
     TestingSession = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     session = TestingSession()
 
-    # Seed 4 distinct test documents
-    # Vector 1: Highly aligned with query (all 1.0s)
-    # Vector 2: Moderately aligned (all 0.5s)
-    # Vector 3: Orthogonal or low alignment
-    # Vector 4: Different category
     docs = [
         Document(
             id=uuid.uuid4(),
@@ -78,7 +73,6 @@ def mock_embedding_provider():
     provider = MagicMock(spec=GeminiEmbeddingService)
     provider.model_name = "gemini-embedding-001"
     provider.dimensions = 768
-    # Returns vector identical to first document
     provider.embed_text.return_value = [1.0] * 768
     return provider
 
@@ -107,13 +101,11 @@ class TestSearchService:
 
         assert response.query == "How do I reset password?"
         assert response.total_results == 3
-        # First document should have highest similarity
         assert "password" in response.results[0].content.lower()
         assert response.results[0].similarity >= response.results[1].similarity
 
     def test_semantic_search_with_category_filter(self, search_db_session, mock_embedding_provider):
         service = SearchService(db=search_db_session, embedding_provider=mock_embedding_provider)
-        # Restrict to billing only
         response = service.semantic_search(
             query="Invoice issues",
             top_k=5,
@@ -124,20 +116,42 @@ class TestSearchService:
         assert response.results[0].metadata["category"] == "billing"
         assert "billing invoices" in response.results[0].content
 
+    def test_keyword_search_matches_exact_terms(self, search_db_session, mock_embedding_provider):
+        service = SearchService(db=search_db_session, embedding_provider=mock_embedding_provider)
+        response = service.keyword_search(query="password reset", top_k=5)
+
+        assert response.total_results >= 1
+        assert "password" in response.results[0].content.lower()
+        assert response.results[0].rank > 0
+
+    def test_keyword_search_with_category_filter(self, search_db_session, mock_embedding_provider):
+        service = SearchService(db=search_db_session, embedding_provider=mock_embedding_provider)
+        response = service.keyword_search(
+            query="subscription",
+            top_k=5,
+            filters={"category": "subscription"},
+        )
+
+        assert response.total_results == 1
+        assert response.results[0].metadata["category"] == "subscription"
+        assert "subscription tier" in response.results[0].content
+
     def test_empty_query_raises_value_error(self, search_db_session, mock_embedding_provider):
         service = SearchService(db=search_db_session, embedding_provider=mock_embedding_provider)
         with pytest.raises(ValueError, match="cannot be empty"):
             service.semantic_search(query="   ")
+        with pytest.raises(ValueError, match="cannot be empty"):
+            service.keyword_search(query="   ")
 
 
 class TestSearchEndpoints:
-    def test_post_search_semantic_endpoint(self, search_client):
+    def test_post_v1_search_semantic_endpoint(self, search_client):
         payload = {
             "query": "I can't access my account",
             "top_k": 2,
             "filters": {"category": "account"},
         }
-        resp = search_client.post("/search/semantic", json=payload)
+        resp = search_client.post("/v1/search/semantic", json=payload)
         assert resp.status_code == 200
         data = resp.json()
 
@@ -149,20 +163,31 @@ class TestSearchEndpoints:
             assert "distance" in item
             assert "id" in item
 
-    def test_post_v1_search_semantic_endpoint(self, search_client):
+    def test_post_v1_search_keyword_endpoint(self, search_client):
         payload = {
-            "query": "How do I upgrade subscription?",
-            "top_k": 1,
-            "filters": {"category": "subscription"},
+            "query": "billing invoices",
+            "top_k": 2,
+            "filters": {"category": "billing"},
         }
-        resp = search_client.post("/v1/search/semantic", json=payload)
+        resp = search_client.post("/v1/search/keyword", json=payload)
         assert resp.status_code == 200
         data = resp.json()
 
+        assert data["query"] == "billing invoices"
         assert len(data["results"]) == 1
-        assert data["results"][0]["metadata"]["category"] == "subscription"
-        assert "Pro" in data["results"][0]["content"]
+        assert data["results"][0]["metadata"]["category"] == "billing"
+        assert "rank" in data["results"][0]
+
+    def test_unversioned_search_path_returns_404(self, search_client):
+        """Verify unversioned search routes are strictly disabled in favor of /v1."""
+        resp = search_client.post("/search/semantic", json={"query": "test"})
+        assert resp.status_code == 404
+
+        resp_kw = search_client.post("/search/keyword", json={"query": "test"})
+        assert resp_kw.status_code == 404
 
     def test_empty_query_validation_error(self, search_client):
-        resp = search_client.post("/search/semantic", json={"query": ""})
+        resp = search_client.post("/v1/search/semantic", json={"query": ""})
         assert resp.status_code == 422
+        resp_kw = search_client.post("/v1/search/keyword", json={"query": ""})
+        assert resp_kw.status_code == 422

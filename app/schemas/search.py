@@ -4,22 +4,22 @@ from typing import Any, Dict, List, Optional
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 
-class SemanticSearchRequest(BaseModel):
+class BaseSearchRequest(BaseModel):
     """
-    Payload for semantic similarity search over stored vector documents.
+    Common base schema for search requests.
     """
     query: str = Field(
         ...,
         min_length=1,
         max_length=1000,
-        description="Search query string to semantically match against document vectors",
+        description="Search query string",
         examples=["I can't access my account"],
     )
     top_k: int = Field(
         default=5,
         ge=1,
         le=50,
-        description="Maximum number of nearest neighbor documents to return",
+        description="Maximum number of documents to return",
         examples=[5],
     )
     filters: Optional[Dict[str, Any]] = Field(
@@ -29,9 +29,23 @@ class SemanticSearchRequest(BaseModel):
     )
 
 
+class SemanticSearchRequest(BaseSearchRequest):
+    """
+    Payload for semantic vector similarity search over stored vector documents.
+    """
+    pass
+
+
+class KeywordSearchRequest(BaseSearchRequest):
+    """
+    Payload for PostgreSQL full-text keyword search using tsvector and websearch_to_tsquery.
+    """
+    pass
+
+
 class SearchResultItem(BaseModel):
     """
-    Individual document search result with cosine similarity and distance metrics.
+    Individual document search result for semantic vector search.
     """
     id: uuid.UUID = Field(..., description="Unique document ID")
     content: str = Field(..., description="Original document text content")
@@ -48,11 +62,41 @@ class SearchResultItem(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 
+class KeywordSearchResultItem(BaseModel):
+    """
+    Individual document search result for full-text keyword search.
+    """
+    id: uuid.UUID = Field(..., description="Unique document ID")
+    content: str = Field(..., description="Original document text content")
+    metadata: Dict[str, Any] = Field(
+        default_factory=dict,
+        validation_alias=AliasChoices("doc_metadata", "metadata"),
+        serialization_alias="metadata",
+        description="Document metadata attributes (category, source, tags, etc.)",
+    )
+    rank: float = Field(..., description="PostgreSQL full-text relevance rank (ts_rank)")
+    headline: Optional[str] = Field(default=None, description="Highlighted text fragment or matched terms")
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+
 class SemanticSearchResponse(BaseModel):
     """
-    Response schema returning ranked nearest neighbor documents.
+    Response schema returning ranked nearest neighbor documents from vector search.
     """
     query: str = Field(..., description="Original query searched")
     top_k: int = Field(..., description="Requested top-K limit")
     total_results: int = Field(..., description="Number of matching results returned")
+    search_type: str = Field(default="semantic", description="Type of search executed")
     results: List[SearchResultItem] = Field(default_factory=list, description="Ranked list of matching documents")
+
+
+class KeywordSearchResponse(BaseModel):
+    """
+    Response schema returning full-text matched documents ranked by ts_rank.
+    """
+    query: str = Field(..., description="Original query searched")
+    top_k: int = Field(..., description="Requested top-K limit")
+    total_results: int = Field(..., description="Number of matching results returned")
+    search_type: str = Field(default="keyword", description="Type of search executed")
+    results: List[KeywordSearchResultItem] = Field(default_factory=list, description="Ranked list of matching documents")
