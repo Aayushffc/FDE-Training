@@ -3,6 +3,9 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.schemas.search import (
+    ChunkSearchResponse,
+    HybridSearchRequest,
+    HybridSearchResponse,
     KeywordSearchRequest,
     KeywordSearchResponse,
     SemanticSearchRequest,
@@ -90,3 +93,50 @@ def keyword_search_endpoint(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Keyword search failed: {str(exc)}",
         )
+
+
+@router.post(
+    "/hybrid",
+    response_model=HybridSearchResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Execute hybrid search (Keyword + Vector with Reciprocal Rank Fusion) over document chunks",
+)
+def hybrid_search_endpoint(
+    payload: HybridSearchRequest,
+    search_service: SearchService = Depends(get_search_service),
+) -> HybridSearchResponse:
+    """
+    Execute hybrid search over document chunks:
+    1. Executes vector semantic search via Gemini embeddings & pgvector.
+    2. Executes PostgreSQL full-text keyword search via tsvector and ts_rank.
+    3. Merges and re-ranks results using Reciprocal Rank Fusion (RRF) or normalized weighted scoring.
+    4. Optionally applies cross-encoder reranking to refine relevance.
+    5. Returns ranked chunks along with vector/keyword rank citations and parent document IDs.
+    """
+    try:
+        resp = search_service.chunk_hybrid_search(
+            query=payload.query,
+            top_k=payload.top_k,
+            filters=payload.filters,
+            alpha=payload.alpha,
+            rrf_k=payload.rrf_k,
+            fusion_method=payload.fusion_method,
+        )
+        if payload.rerank and resp.results:
+            from app.services.reranking_service import RerankingService
+            reranker = RerankingService()
+            reranked_results = reranker.rerank(query=payload.query, items=resp.results, top_k=payload.top_k)
+            resp.results = reranked_results
+        return resp
+    except ValueError as val_err:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(val_err),
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Hybrid search failed: {str(exc)}",
+        )
+
+

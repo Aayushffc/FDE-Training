@@ -1,0 +1,200 @@
+{
+  "metrics": {
+    "avg_keyword_relevance": 0.125,
+    "avg_vector_relevance": 0.919,
+    "avg_hybrid_relevance": 0.919,
+    "avg_reranked_relevance": 0.863,
+    "avg_answer_grounding": 0.784,
+    "idk_precision": 1.0
+  },
+  "evaluations": [
+    {
+      "id": 1,
+      "question": "How can I reset my forgotten password?",
+      "expected_topic": "Password reset link via email",
+      "is_in_domain": true,
+      "retrieval_relevance": {
+        "keyword": 1.0,
+        "vector": 1.0,
+        "hybrid_raw": 1.0,
+        "hybrid_reranked": 1.0
+      },
+      "answer_grounding": 1.0,
+      "citations": [
+        "Source 1"
+      ],
+      "is_grounded": true,
+      "generated_answer": "To reset a forgotten password:\n\n1. Open the sign\u2011in/login page.  \n2. Click **Forgot Password**.  \n3. Enter the email address registered to your account.  \n4. You will receive a secure, time\u2011sensitive reset link.  \n5. Follow the email\u2019s instructions to set a new password (minimum 8 characters, including letters, numbers, and symbols)\u3010Source 1\u3011.  \n\n(An equivalent, shorter description is also provided in Source\u00a02.)",
+      "top_source": "To reset your forgotten password, navigate to the sign-in screen and click 'Forgot Password'. Enter your registered account email address, and we will"
+    },
+    {
+      "id": 2,
+      "question": "What is the lockout duration after failed login attempts?",
+      "expected_topic": "30-minute cooling-off lockout period",
+      "is_in_domain": true,
+      "retrieval_relevance": {
+        "keyword": 0.0,
+        "vector": 0.75,
+        "hybrid_raw": 0.75,
+        "hybrid_reranked": 0.75
+      },
+      "answer_grounding": 0.75,
+      "citations": [
+        "Source 1"
+      ],
+      "is_grounded": true,
+      "generated_answer": "The lockout duration is **exactly thirty minutes** after five consecutive failed login attempts\u3010Source\u202f1\u3011.",
+      "top_source": "Account Lockout, Cooling-Off Periods, and Session Invalidation To thwart brute-force password guessing attacks, accounts automatically enter a restric"
+    },
+    {
+      "id": 3,
+      "question": "How do European Union businesses obtain VAT tax exemption?",
+      "expected_topic": "VIES VAT registration number & reverse charge",
+      "is_in_domain": true,
+      "retrieval_relevance": {
+        "keyword": 0.0,
+        "vector": 1.0,
+        "hybrid_raw": 1.0,
+        "hybrid_reranked": 1.0
+      },
+      "answer_grounding": 0.88,
+      "citations": [
+        "Source 1"
+      ],
+      "is_grounded": true,
+      "generated_answer": "European Union businesses obtain the VAT exemption by entering a valid VIES\u202fVAT registration number in the **Billing Details** section; the system then automatically applies the reverse\u2011charge tax exemption.\u202f[Source\u202f1]",
+      "top_source": "European Union businesses possessing a valid VIES VAT registration number can input their tax identifier under Billing Details to automatically apply "
+    },
+    {
+      "id": 4,
+      "question": "What discount is offered for choosing annual billing over monthly?",
+      "expected_topic": "20% annual commitment discount",
+      "is_in_domain": true,
+      "retrieval_relevance": {
+        "keyword": 0.0,
+        "vector": 1.0,
+        "hybrid_raw": 1.0,
+        "hybrid_reranked": 1.0
+      },
+      "answer_grounding": 0.83,
+      "citations": [
+        "Source 1"
+      ],
+      "is_grounded": true,
+      "generated_answer": "Choosing an annual billing plan provides a\u202f20% discount compared with month\u2011to\u2011month pricing\u3010Source\u202f1\u3011.",
+      "top_source": "Annual billing plans provide an upfront 20% discount compared to monthly subscriptions. You can switch from monthly to annual billing at any point fro"
+    },
+    {
+      "id": 5,
+      "question": "What biometric passkeys and MFA hardware are supported?",
+      "expected_topic": "FIDO2, WebAuthn, Touch ID, Windows Hello, YubiKey, Google Authenticator",
+      "is_in_domain": true,
+      "retrieval_relevance": {
+        "keyword": 0.0,
+        "vector": 1.0,
+        "hybrid_raw": 1.0,
+        "hybrid_reranked": 1.0
+      },
+      "answer_grounding": 1.0,
+      "citations": [
+        "Source 1",
+        "Source 2"
+      ],
+      "is_grounded": true,
+      "generated_answer": "The platform supports the following biometric passkeys:\n\n- **Touch\u202fID**  \n- **Windows\u202fHello**  \n- **YubiKey\u202fNFC** hardware (as a FIDO2/WebAuthn passkey)  \n\nThese are listed as fully supported password\u2011less biometric authentication mechanisms\u3010Source\u202f1\u3011.\n\nFor multi\u2011factor authentication (MFA) hardware, the system allows enrollment of:\n\n- **Time\u2011Based One\u2011Time Password (TOTP) hardware security tokens** (in addition to software authenticators)\u3010Source\u202f2\u3011.",
+      "top_source": "During enrollment, a secret seed key is generated alongside ten single-use alphanumeric recovery codes. Each recovery code can only be consumed once a"
+    },
+    {
+      "id": 6,
+      "question": "What is the dunning retry schedule when a credit card payment declines?",
+      "expected_topic": "14-day recovery window with retries on day 1, 3, 7, and 14",
+      "is_in_domain": true,
+      "retrieval_relevance": {
+        "keyword": 0.0,
+        "vector": 1.0,
+        "hybrid_raw": 1.0,
+        "hybrid_reranked": 1.0
+      },
+      "answer_grounding": 0.5,
+      "citations": [
+        "Source 2",
+        "Source 3"
+      ],
+      "is_grounded": true,
+      "generated_answer": "The dunning system retries a declined credit\u2011card charge on **day\u202f1, day\u202f3, day\u202f7, and day\u202f14** after the failure. \u3010Source\u202f2\u3011 \u3010Source\u202f3\u3011",
+      "top_source": "Billing currencies include USD, EUR, GBP, CAD, and AUD, settled according to daily mid-market foreign exchange rates without additional surcharge marg"
+    },
+    {
+      "id": 7,
+      "question": "How can an enterprise owner transfer workspace ownership to another user?",
+      "expected_topic": "Workspace Settings > Transfer Ownership with dual confirmation",
+      "is_in_domain": true,
+      "retrieval_relevance": {
+        "keyword": 0.0,
+        "vector": 1.0,
+        "hybrid_raw": 1.0,
+        "hybrid_reranked": 0.75
+      },
+      "answer_grounding": 0.88,
+      "citations": [
+        "Source 1"
+      ],
+      "is_grounded": true,
+      "generated_answer": "An enterprise owner can transfer ownership by:\n\n1. Going to **Workspace Settings\u202f>\u202fMembers**.  \n2. Selecting the user who will become the new owner.  \n3. Choosing **\u201cTransfer Ownership.\u201d**  \n\nThe new owner then must accept the invitation emailed to them to complete the transfer.\u202f[Source 1]",
+      "top_source": "Account ownership transfer is available on all Team and Enterprise plans. The existing owner must navigate to Workspace Settings > Members, select the"
+    },
+    {
+      "id": 8,
+      "question": "What are the quota differences between Starter, Pro, and Enterprise tiers?",
+      "expected_topic": "Seat counts (5 vs 25 vs unlimited) and API limits (10k vs 250k vs custom)",
+      "is_in_domain": true,
+      "retrieval_relevance": {
+        "keyword": 0.0,
+        "vector": 0.6,
+        "hybrid_raw": 0.6,
+        "hybrid_reranked": 0.4
+      },
+      "answer_grounding": 0.0,
+      "citations": [
+        "Source 3"
+      ],
+      "is_grounded": false,
+      "generated_answer": "- **Starter tier** \u2013 includes up to\u202f5 user seats,\u202f10\u202f000 monthly API embedding calls, standard community\u2011forum support, and\u202f90\u2011day document audit retention. \u3010Source\u202f3\u3011\n\n- **Pro and Enterprise tiers** \u2013 the specific quota limits for these tiers are not detailed in the provided context. I don't know based on the provided context.",
+      "top_source": "Mid-cycle plan cancellations outside the introductory window do not qualify for cash refunds; instead, remaining prepaid balances are converted into n"
+    },
+    {
+      "id": 9,
+      "question": "What is the exact average distance between the Earth and the Moon in kilometers?",
+      "expected_topic": "Out of domain fact (should trigger 'I don't know')",
+      "is_in_domain": false,
+      "retrieval_relevance": {
+        "keyword": 1.0,
+        "vector": 1.0,
+        "hybrid_raw": 1.0,
+        "hybrid_reranked": 1.0
+      },
+      "answer_grounding": 1.0,
+      "citations": [],
+      "is_grounded": false,
+      "generated_answer": "I don't know based on the provided context.",
+      "top_source": "Enterprise organizations based in the United States and the European Union may also configure Automated Clearing House (ACH) direct debit, SEPA direct"
+    },
+    {
+      "id": 10,
+      "question": "How do I build a liquid fuel rocket engine in my backyard workshop?",
+      "expected_topic": "Out of domain instructions (should trigger 'I don't know')",
+      "is_in_domain": false,
+      "retrieval_relevance": {
+        "keyword": 1.0,
+        "vector": 1.0,
+        "hybrid_raw": 1.0,
+        "hybrid_reranked": 1.0
+      },
+      "answer_grounding": 1.0,
+      "citations": [],
+      "is_grounded": false,
+      "generated_answer": "I don't know based on the provided context.",
+      "top_source": "You can export all workspace documents, prompts, and metadata in standard JSON or CSV archive formats. Visit Workspace Settings > Data Management > Ex"
+    }
+  ]
+}

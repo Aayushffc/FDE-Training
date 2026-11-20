@@ -7,7 +7,12 @@ from sqlalchemy.orm import Session
 
 from app.infrastructure.embedding_providers import BaseEmbeddingProvider, get_embedding_provider
 from app.models.document import Document
+from app.models.document_chunk import DocumentChunk
 from app.schemas.search import (
+    ChunkSearchResponse,
+    ChunkSearchResultItem,
+    HybridChunkSearchResultItem,
+    HybridSearchResponse,
     KeywordSearchResultItem,
     KeywordSearchResponse,
     SearchResultItem,
@@ -54,18 +59,60 @@ class SearchService:
                 stmt = stmt.where(Document.doc_metadata[key].as_string() == str(val))
         return stmt
 
+    def _apply_chunk_metadata_filters(self, stmt: Any, filters: Optional[Dict[str, Any]]) -> Any:
+        """Helper to apply JSON metadata equality filters on chunk metadata."""
+        if filters:
+            for key, val in filters.items():
+                stmt = stmt.where(DocumentChunk.chunk_metadata[key].as_string() == str(val))
+        return stmt
+
+    def has_chunks(self) -> bool:
+        """Check whether document chunks are populated in the database."""
+        try:
+            count = self.db.scalar(select(func.count(DocumentChunk.id))) or 0
+            return count > 0
+        except Exception:
+            return False
+
     def semantic_search(
         self,
         query: str,
         top_k: int = 5,
         filters: Optional[Dict[str, Any]] = None,
+        search_target: Optional[str] = None,
     ) -> SemanticSearchResponse:
         """
-        Execute semantic cosine similarity search with optional metadata filtering.
+        Execute semantic cosine similarity search.
+        Defaults to searching 'document_chunks' if chunks exist, otherwise falls back to 'documents'.
         """
         cleaned_query = query.strip()
         if not cleaned_query:
             raise ValueError("Search query cannot be empty.")
+
+        target_chunks = (search_target == "chunks") or (search_target != "documents" and self.has_chunks())
+
+        # If searching chunks, delegate to chunk search logic
+        if target_chunks:
+            chunk_resp = self.chunk_vector_search(query=cleaned_query, top_k=top_k, filters=filters)
+            return SemanticSearchResponse(
+                query=cleaned_query,
+                top_k=top_k,
+                total_results=chunk_resp.total_results,
+                search_type="semantic",
+                results=[
+                    SearchResultItem(
+                        id=c.id,
+                        document_id=c.document_id,
+                        chunk_index=c.chunk_index,
+                        content=c.content,
+                        metadata=c.metadata,
+                        similarity=c.similarity or 0.0,
+                        distance=c.distance or 0.0,
+                        embedding_model=c.embedding_model or "gemini-embedding-001",
+                    )
+                    for c in chunk_resp.results
+                ],
+            )
 
         # 1. Generate query embedding using Gemini
         query_vector = self.embedding_provider.embed_text(cleaned_query)
@@ -130,13 +177,37 @@ class SearchService:
         query: str,
         top_k: int = 5,
         filters: Optional[Dict[str, Any]] = None,
+        search_target: Optional[str] = None,
     ) -> KeywordSearchResponse:
         """
         Execute full-text keyword search using PostgreSQL tsvector and websearch_to_tsquery.
+        Defaults to searching 'document_chunks' if chunks exist, otherwise falls back to 'documents'.
         """
         cleaned_query = query.strip()
         if not cleaned_query:
             raise ValueError("Search query cannot be empty.")
+
+        target_chunks = (search_target == "chunks") or (search_target != "documents" and self.has_chunks())
+
+        if target_chunks:
+            chunk_resp = self.chunk_keyword_search(query=cleaned_query, top_k=top_k, filters=filters)
+            return KeywordSearchResponse(
+                query=cleaned_query,
+                top_k=top_k,
+                total_results=chunk_resp.total_results,
+                search_type="keyword",
+                results=[
+                    KeywordSearchResultItem(
+                        id=c.id,
+                        document_id=c.document_id,
+                        chunk_index=c.chunk_index,
+                        content=c.content,
+                        metadata=c.metadata,
+                        rank=c.rank or 0.0,
+                    )
+                    for c in chunk_resp.results
+                ],
+            )
 
         result_items: List[KeywordSearchResultItem] = []
 
@@ -196,3 +267,275 @@ class SearchService:
             total_results=len(result_items),
             results=result_items,
         )
+
+    def chunk_vector_search(
+        self,
+        query: str,
+        top_k: int = 5,
+        filters: Optional[Dict[str, Any]] = None,
+    ) -> ChunkSearchResponse:
+        """
+        Execute semantic cosine similarity search over DocumentChunk records.
+        Returns the top_k most semantically relevant chunks with citation back to parent document.
+        """
+        cleaned_query = query.strip()
+        if not cleaned_query:
+            raise ValueError("Search query cannot be empty.")
+
+        query_vector = self.embedding_provider.embed_text(cleaned_query)
+        result_items: List[ChunkSearchResultItem] = []
+
+        if self.dialect_name == "postgresql":
+            distance_col = DocumentChunk.embedding.cosine_distance(query_vector).label("distance")
+            stmt = select(DocumentChunk, distance_col)
+            stmt = self._apply_chunk_metadata_filters(stmt, filters)
+            stmt = stmt.order_by(distance_col.asc()).limit(top_k)
+
+            rows = self.db.execute(stmt).all()
+            for chunk, raw_dist in rows:
+                dist_val = float(raw_dist)
+                sim_val = max(0.0, min(1.0, 1.0 - dist_val))
+                result_items.append(
+                    ChunkSearchResultItem(
+                        id=chunk.id,
+                        document_id=chunk.document_id,
+                        chunk_index=chunk.chunk_index,
+                        content=chunk.content,
+                        metadata=chunk.chunk_metadata,
+                        similarity=round(sim_val, 4),
+                        distance=round(dist_val, 4),
+                        embedding_model=chunk.embedding_model,
+                    )
+                )
+        else:
+            stmt = select(DocumentChunk)
+            stmt = self._apply_chunk_metadata_filters(stmt, filters)
+            candidates = list(self.db.scalars(stmt).all())
+
+            scored: List[Tuple[DocumentChunk, float, float]] = []
+            for chunk in candidates:
+                sim = _compute_cosine_similarity(chunk.embedding, query_vector)
+                dist = 1.0 - sim
+                scored.append((chunk, dist, sim))
+
+            scored.sort(key=lambda x: x[1])
+            for chunk, dist_val, sim_val in scored[:top_k]:
+                result_items.append(
+                    ChunkSearchResultItem(
+                        id=chunk.id,
+                        document_id=chunk.document_id,
+                        chunk_index=chunk.chunk_index,
+                        content=chunk.content,
+                        metadata=chunk.chunk_metadata,
+                        similarity=round(sim_val, 4),
+                        distance=round(dist_val, 4),
+                        embedding_model=chunk.embedding_model,
+                    )
+                )
+
+        return ChunkSearchResponse(
+            query=cleaned_query,
+            top_k=top_k,
+            total_results=len(result_items),
+            search_type="chunk_vector",
+            results=result_items,
+        )
+
+    def chunk_keyword_search(
+        self,
+        query: str,
+        top_k: int = 5,
+        filters: Optional[Dict[str, Any]] = None,
+    ) -> ChunkSearchResponse:
+        """
+        Execute full-text keyword search over DocumentChunk records using PostgreSQL FTS.
+        """
+        cleaned_query = query.strip()
+        if not cleaned_query:
+            raise ValueError("Search query cannot be empty.")
+
+        result_items: List[ChunkSearchResultItem] = []
+
+        if self.dialect_name == "postgresql":
+            ts_vec = func.to_tsvector("english", DocumentChunk.content)
+            ts_query = func.websearch_to_tsquery("english", cleaned_query)
+            rank_col = func.ts_rank(ts_vec, ts_query).label("rank")
+
+            stmt = select(DocumentChunk, rank_col).where(ts_vec.bool_op("@@")(ts_query))
+            stmt = self._apply_chunk_metadata_filters(stmt, filters)
+            stmt = stmt.order_by(rank_col.desc()).limit(top_k)
+
+            rows = self.db.execute(stmt).all()
+            for chunk, raw_rank in rows:
+                rank_val = float(raw_rank)
+                result_items.append(
+                    ChunkSearchResultItem(
+                        id=chunk.id,
+                        document_id=chunk.document_id,
+                        chunk_index=chunk.chunk_index,
+                        content=chunk.content,
+                        metadata=chunk.chunk_metadata,
+                        rank=round(rank_val, 4),
+                        embedding_model=chunk.embedding_model,
+                    )
+                )
+        else:
+            stmt = select(DocumentChunk)
+            stmt = self._apply_chunk_metadata_filters(stmt, filters)
+            candidates = list(self.db.scalars(stmt).all())
+
+            keywords = [w.lower() for w in re.findall(r"\w+", cleaned_query) if len(w) > 1]
+            scored_candidates: List[Tuple[DocumentChunk, float]] = []
+
+            for chunk in candidates:
+                content_lower = chunk.content.lower()
+                matches = sum(1 for kw in keywords if kw in content_lower)
+                if matches > 0:
+                    score = matches / max(1, len(keywords))
+                    scored_candidates.append((chunk, score))
+
+            scored_candidates.sort(key=lambda x: x[1], reverse=True)
+            for chunk, score in scored_candidates[:top_k]:
+                result_items.append(
+                    ChunkSearchResultItem(
+                        id=chunk.id,
+                        document_id=chunk.document_id,
+                        chunk_index=chunk.chunk_index,
+                        content=chunk.content,
+                        metadata=chunk.chunk_metadata,
+                        rank=round(score, 4),
+                        embedding_model=chunk.embedding_model,
+                    )
+                )
+
+        return ChunkSearchResponse(
+            query=cleaned_query,
+            top_k=top_k,
+            total_results=len(result_items),
+            search_type="chunk_keyword",
+            results=result_items,
+        )
+
+    def chunk_hybrid_search(
+        self,
+        query: str,
+        top_k: int = 5,
+        filters: Optional[Dict[str, Any]] = None,
+        alpha: float = 0.5,
+        rrf_k: int = 60,
+        fusion_method: str = "rrf",
+    ) -> HybridSearchResponse:
+        """
+        Execute hybrid search combining vector similarity and keyword search ranks.
+        Supports Reciprocal Rank Fusion (RRF, default) and weighted score normalization.
+        """
+        cleaned_query = query.strip()
+        if not cleaned_query:
+            raise ValueError("Search query cannot be empty.")
+
+        candidate_k = max(top_k * 3, 20)
+
+        # 1. Fetch vector candidates
+        vector_resp = self.chunk_vector_search(query=cleaned_query, top_k=candidate_k, filters=filters)
+        vector_map = {item.id: (rank + 1, item) for rank, item in enumerate(vector_resp.results)}
+
+        # 2. Fetch keyword candidates
+        keyword_resp = self.chunk_keyword_search(query=cleaned_query, top_k=candidate_k, filters=filters)
+        keyword_map = {item.id: (rank + 1, item) for rank, item in enumerate(keyword_resp.results)}
+
+        all_chunk_ids = set(vector_map.keys()) | set(keyword_map.keys())
+        if not all_chunk_ids:
+            return HybridSearchResponse(
+                query=cleaned_query,
+                top_k=top_k,
+                total_results=0,
+                search_type="hybrid",
+                fusion_method=fusion_method,
+                alpha=alpha,
+                results=[],
+            )
+
+        fused_items: List[HybridChunkSearchResultItem] = []
+
+        if fusion_method == "weighted":
+            max_kw = max((item[1].rank or 0.0 for item in keyword_map.values()), default=1.0)
+            if max_kw <= 0.0:
+                max_kw = 1.0
+
+            for cid in all_chunk_ids:
+                in_vec = cid in vector_map
+                in_kw = cid in keyword_map
+
+                v_rank, v_item = vector_map[cid] if in_vec else (None, None)
+                k_rank, k_item = keyword_map[cid] if in_kw else (None, None)
+
+                v_sim = v_item.similarity if v_item and v_item.similarity is not None else 0.0
+                k_score = (k_item.rank or 0.0) if k_item else 0.0
+                normalized_k = k_score / max_kw
+
+                combined = (alpha * v_sim) + ((1.0 - alpha) * normalized_k)
+                base = v_item or k_item
+
+                matched = "both" if (in_vec and in_kw) else ("vector_only" if in_vec else "keyword_only")
+                fused_items.append(
+                    HybridChunkSearchResultItem(
+                        id=base.id,
+                        document_id=base.document_id,
+                        chunk_index=base.chunk_index,
+                        content=base.content,
+                        metadata=base.metadata,
+                        combined_score=round(combined, 6),
+                        vector_rank=v_rank,
+                        keyword_rank=k_rank,
+                        vector_similarity=v_sim if in_vec else None,
+                        keyword_score=k_score if in_kw else None,
+                        matched_by=matched,
+                    )
+                )
+        else:
+            # Reciprocal Rank Fusion (RRF)
+            for cid in all_chunk_ids:
+                in_vec = cid in vector_map
+                in_kw = cid in keyword_map
+
+                v_rank, v_item = vector_map[cid] if in_vec else (None, None)
+                k_rank, k_item = keyword_map[cid] if in_kw else (None, None)
+
+                rrf_score = 0.0
+                if in_vec:
+                    rrf_score += alpha / (rrf_k + v_rank)
+                if in_kw:
+                    rrf_score += (1.0 - alpha) / (rrf_k + k_rank)
+
+                base = v_item or k_item
+                matched = "both" if (in_vec and in_kw) else ("vector_only" if in_vec else "keyword_only")
+
+                fused_items.append(
+                    HybridChunkSearchResultItem(
+                        id=base.id,
+                        document_id=base.document_id,
+                        chunk_index=base.chunk_index,
+                        content=base.content,
+                        metadata=base.metadata,
+                        combined_score=round(rrf_score, 6),
+                        vector_rank=v_rank,
+                        keyword_rank=k_rank,
+                        vector_similarity=v_item.similarity if in_vec else None,
+                        keyword_score=k_item.rank if in_kw else None,
+                        matched_by=matched,
+                    )
+                )
+
+        # Sort descending by combined score
+        fused_items.sort(key=lambda x: x.combined_score, reverse=True)
+
+        return HybridSearchResponse(
+            query=cleaned_query,
+            top_k=top_k,
+            total_results=len(all_chunk_ids),
+            search_type="hybrid",
+            fusion_method=fusion_method,
+            alpha=alpha,
+            results=fused_items[:top_k],
+        )
+

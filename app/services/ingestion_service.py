@@ -2,12 +2,14 @@ import json
 import uuid
 from typing import Any, Dict, List, Optional, Tuple
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.infrastructure.embedding_providers import BaseEmbeddingProvider, get_embedding_provider
 from app.models.document import Document
+from app.models.document_chunk import DocumentChunk
 from app.schemas.document import DocumentIngestRequest
+from app.services.chunking_service import ChunkingService
 
 get_embedding_service = get_embedding_provider
 
@@ -24,9 +26,11 @@ class IngestionService:
         db: Session,
         embedding_provider: Optional[BaseEmbeddingProvider] = None,
         embedding_service: Optional[BaseEmbeddingProvider] = None,
+        chunking_service: Optional[ChunkingService] = None,
     ) -> None:
         self.db = db
         self.embedding_provider = embedding_provider or embedding_service or get_embedding_provider()
+        self.chunking_service = chunking_service or ChunkingService()
 
     @property
     def model_name(self) -> str:
@@ -191,3 +195,195 @@ class IngestionService:
         )
         docs = list(self.db.scalars(stmt).all())
         return docs, total
+
+    def chunk_document_record(
+        self,
+        document: Document,
+        chunk_size: int = 400,
+        chunk_overlap: int = 80,
+        strategy: str = "character",
+        preserve_boundaries: bool = True,
+    ) -> List[DocumentChunk]:
+        """
+        Takes an existing Document record, cleans text, splits it into chunks,
+        embeds each chunk in batch via the embedding provider, and creates DocumentChunk records.
+        Preserves reference to parent document (document_id) and merges parent metadata.
+        """
+        raw_chunks = self.chunking_service.chunk_document(
+            content=document.content,
+            metadata=document.doc_metadata,
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            strategy=strategy,
+            preserve_boundaries=preserve_boundaries,
+        )
+        if not raw_chunks:
+            return []
+
+        chunk_texts = [c["content"] for c in raw_chunks]
+        embeddings = self.embedding_provider.embed_batch(chunk_texts)
+
+        chunk_records: List[DocumentChunk] = []
+        for c_data, emb in zip(raw_chunks, embeddings):
+            chunk = DocumentChunk(
+                id=uuid.uuid4(),
+                document_id=document.id,
+                chunk_index=c_data["chunk_index"],
+                chunk_size=chunk_size,
+                overlap=chunk_overlap,
+                content=c_data["content"],
+                embedding=emb,
+                chunk_metadata=c_data["metadata"],
+                embedding_model=self.model_name,
+            )
+            chunk_records.append(chunk)
+
+        self.db.add_all(chunk_records)
+        self.db.flush()
+        return chunk_records
+
+    def chunk_existing_document(
+        self,
+        document_id: uuid.UUID,
+        chunk_size: int = 400,
+        chunk_overlap: int = 80,
+        strategy: str = "character",
+        preserve_boundaries: bool = True,
+        replace_existing: bool = True,
+    ) -> List[DocumentChunk]:
+        """
+        Chunk an existing stored document by its UUID.
+        Optionally replaces previous chunks for this document.
+        """
+        doc = self.get_document(document_id)
+        if not doc:
+            raise ValueError(f"Document with ID {document_id} not found.")
+
+        if replace_existing:
+            self.db.execute(delete(DocumentChunk).where(DocumentChunk.document_id == document_id))
+            self.db.flush()
+
+        chunks = self.chunk_document_record(
+            document=doc,
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            strategy=strategy,
+            preserve_boundaries=preserve_boundaries,
+        )
+        self.db.commit()
+        return chunks
+
+    def ingest_document_with_chunks(
+        self,
+        content: str,
+        metadata: Optional[Dict[str, Any]] = None,
+        chunk_size: int = 400,
+        chunk_overlap: int = 80,
+        strategy: str = "character",
+        preserve_boundaries: bool = True,
+        skip_duplicates: bool = False,
+    ) -> Tuple[Document, List[DocumentChunk]]:
+        """
+        End-to-end chunked ingestion:
+        1. Ingest/store parent document in 'documents' table.
+        2. Clean text and split document into chunks.
+        3. Generate embeddings for each chunk using Gemini.
+        4. Store chunks, embeddings, and metadata in 'document_chunks' table.
+        Preserves foreign key to the parent document.
+        """
+        doc = self.ingest_document(
+            content=content,
+            metadata=metadata,
+            skip_duplicates=skip_duplicates,
+        )
+
+        # Check if chunks already exist (e.g. if skip_duplicates found existing doc)
+        existing_chunks = list(
+            self.db.scalars(
+                select(DocumentChunk)
+                .where(DocumentChunk.document_id == doc.id)
+                .order_by(DocumentChunk.chunk_index.asc())
+            ).all()
+        )
+        if existing_chunks and skip_duplicates:
+            return doc, existing_chunks
+
+        chunks = self.chunk_document_record(
+            document=doc,
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap,
+            strategy=strategy,
+            preserve_boundaries=preserve_boundaries,
+        )
+        self.db.commit()
+        return doc, chunks
+
+    def get_chunk(self, chunk_id: uuid.UUID) -> Optional[DocumentChunk]:
+        """Fetch an individual chunk by its UUID."""
+        return self.db.scalar(select(DocumentChunk).where(DocumentChunk.id == chunk_id))
+
+    def list_chunks(
+        self,
+        document_id: Optional[uuid.UUID] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> Tuple[List[DocumentChunk], int]:
+        """Retrieve paginated chunks, optionally filtered by parent document_id."""
+        stmt = select(DocumentChunk)
+        count_stmt = select(func.count(DocumentChunk.id))
+
+        if document_id is not None:
+            stmt = stmt.where(DocumentChunk.document_id == document_id)
+            count_stmt = count_stmt.where(DocumentChunk.document_id == document_id)
+
+        total = self.db.scalar(count_stmt) or 0
+        stmt = (
+            stmt.order_by(DocumentChunk.chunk_index.asc(), DocumentChunk.created_at.desc())
+            .offset(offset)
+            .limit(limit)
+        )
+        chunks = list(self.db.scalars(stmt).all())
+        return chunks, total
+
+    def chunk_all_existing_documents(
+        self,
+        chunk_size: int = 400,
+        chunk_overlap: int = 80,
+        strategy: str = "character",
+        preserve_boundaries: bool = True,
+        replace_existing: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        Backfills chunks for all documents currently in the 'documents' table.
+        Rerun-safe: can skip documents that already have chunks.
+        """
+        docs = list(self.db.scalars(select(Document)).all())
+        total_created = 0
+        processed_docs = 0
+
+        for doc in docs:
+            if not replace_existing:
+                existing_count = self.db.scalar(
+                    select(func.count(DocumentChunk.id)).where(DocumentChunk.document_id == doc.id)
+                )
+                if existing_count and existing_count > 0:
+                    continue
+
+            chunks = self.chunk_existing_document(
+                document_id=doc.id,
+                chunk_size=chunk_size,
+                chunk_overlap=chunk_overlap,
+                strategy=strategy,
+                preserve_boundaries=preserve_boundaries,
+                replace_existing=replace_existing,
+            )
+            total_created += len(chunks)
+            processed_docs += 1
+
+        self.db.commit()
+        return {
+            "total_documents": len(docs),
+            "processed_documents": processed_docs,
+            "total_chunks_created": total_created,
+        }
+
