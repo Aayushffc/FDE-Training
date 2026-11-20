@@ -1,12 +1,18 @@
 import math
+import re
 from typing import Any, Dict, List, Optional, Tuple
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.infrastructure.embedding_providers import BaseEmbeddingProvider, get_embedding_provider
 from app.models.document import Document
-from app.schemas.search import SearchResultItem, SemanticSearchResponse
+from app.schemas.search import (
+    KeywordSearchResultItem,
+    KeywordSearchResponse,
+    SearchResultItem,
+    SemanticSearchResponse,
+)
 
 
 def _compute_cosine_similarity(vec_a: List[float], vec_b: List[float]) -> float:
@@ -21,11 +27,11 @@ def _compute_cosine_similarity(vec_a: List[float], vec_b: List[float]) -> float:
 
 class SearchService:
     """
-    Coordinates semantic vector search:
-    1. Embeds user natural-language queries into 768-dim vectors via Gemini.
-    2. Performs cosine distance similarity queries against Neon PostgreSQL (using pgvector `<=>`).
-    3. Evaluates optional JSON metadata filters (e.g. {'category': 'account'}).
-    4. Ranks and returns the top-K most semantically similar documents.
+    Coordinates semantic vector search and PostgreSQL full-text keyword search:
+    - Semantic Search: Converts natural language queries into 768-dim embeddings via Gemini
+      and performs cosine-distance retrieval via pgvector `<=>`.
+    - Keyword Search: Leverages PostgreSQL full-text search (to_tsvector, websearch_to_tsquery, ts_rank).
+    - Metadata Filtering: Evaluates JSONB metadata constraints across both search paradigms.
     """
 
     def __init__(
@@ -36,6 +42,17 @@ class SearchService:
     ) -> None:
         self.db = db
         self.embedding_provider = embedding_provider or embedding_service or get_embedding_provider()
+
+    @property
+    def dialect_name(self) -> str:
+        return self.db.bind.dialect.name if self.db.bind else "postgresql"
+
+    def _apply_metadata_filters(self, stmt: Any, filters: Optional[Dict[str, Any]]) -> Any:
+        """Helper to apply JSON metadata equality filters (DRY)."""
+        if filters:
+            for key, val in filters.items():
+                stmt = stmt.where(Document.doc_metadata[key].as_string() == str(val))
+        return stmt
 
     def semantic_search(
         self,
@@ -53,25 +70,16 @@ class SearchService:
         # 1. Generate query embedding using Gemini
         query_vector = self.embedding_provider.embed_text(cleaned_query)
 
-        # 2. Determine dialect (PostgreSQL vs SQLite for tests)
-        dialect_name = self.db.bind.dialect.name if self.db.bind else "postgresql"
-
         result_items: List[SearchResultItem] = []
 
-        if dialect_name == "postgresql":
+        if self.dialect_name == "postgresql":
             # Native PostgreSQL pgvector cosine distance operator (<=>)
             distance_col = Document.embedding.cosine_distance(query_vector).label("distance")
             stmt = select(Document, distance_col)
-
-            # Apply metadata filters
-            if filters:
-                for key, val in filters.items():
-                    stmt = stmt.where(Document.doc_metadata[key].as_string() == str(val))
-
-            # Order by distance ascending (nearest vectors first)
+            stmt = self._apply_metadata_filters(stmt, filters)
             stmt = stmt.order_by(distance_col.asc()).limit(top_k)
-            rows = self.db.execute(stmt).all()
 
+            rows = self.db.execute(stmt).all()
             for doc, raw_dist in rows:
                 dist_val = float(raw_dist)
                 sim_val = max(0.0, min(1.0, 1.0 - dist_val))
@@ -88,21 +96,16 @@ class SearchService:
         else:
             # SQLite fallback: fetch candidate records and rank via Python cosine similarity
             stmt = select(Document)
-            if filters:
-                for key, val in filters.items():
-                    stmt = stmt.where(Document.doc_metadata[key].as_string() == str(val))
-
+            stmt = self._apply_metadata_filters(stmt, filters)
             candidates = list(self.db.scalars(stmt).all())
-            scored: List[Tuple[Document, float, float]] = []
 
+            scored: List[Tuple[Document, float, float]] = []
             for doc in candidates:
                 sim = _compute_cosine_similarity(doc.embedding, query_vector)
                 dist = 1.0 - sim
                 scored.append((doc, dist, sim))
 
-            # Sort by distance ascending (similarity descending)
             scored.sort(key=lambda x: x[1])
-
             for doc, dist_val, sim_val in scored[:top_k]:
                 result_items.append(
                     SearchResultItem(
@@ -116,6 +119,78 @@ class SearchService:
                 )
 
         return SemanticSearchResponse(
+            query=cleaned_query,
+            top_k=top_k,
+            total_results=len(result_items),
+            results=result_items,
+        )
+
+    def keyword_search(
+        self,
+        query: str,
+        top_k: int = 5,
+        filters: Optional[Dict[str, Any]] = None,
+    ) -> KeywordSearchResponse:
+        """
+        Execute full-text keyword search using PostgreSQL tsvector and websearch_to_tsquery.
+        """
+        cleaned_query = query.strip()
+        if not cleaned_query:
+            raise ValueError("Search query cannot be empty.")
+
+        result_items: List[KeywordSearchResultItem] = []
+
+        if self.dialect_name == "postgresql":
+            # PostgreSQL full-text search: to_tsvector, websearch_to_tsquery, ts_rank
+            ts_vec = func.to_tsvector("english", Document.content)
+            ts_query = func.websearch_to_tsquery("english", cleaned_query)
+            rank_col = func.ts_rank(ts_vec, ts_query).label("rank")
+
+            stmt = select(Document, rank_col).where(ts_vec.bool_op("@@")(ts_query))
+            stmt = self._apply_metadata_filters(stmt, filters)
+            stmt = stmt.order_by(rank_col.desc()).limit(top_k)
+
+            rows = self.db.execute(stmt).all()
+            for doc, raw_rank in rows:
+                rank_val = float(raw_rank)
+                result_items.append(
+                    KeywordSearchResultItem(
+                        id=doc.id,
+                        content=doc.content,
+                        metadata=doc.doc_metadata,
+                        rank=round(rank_val, 4),
+                    )
+                )
+        else:
+            # SQLite fallback: keyword matching using tokenized words
+            stmt = select(Document)
+            stmt = self._apply_metadata_filters(stmt, filters)
+            candidates = list(self.db.scalars(stmt).all())
+
+            # Extract distinct alphanumeric keywords
+            keywords = [w.lower() for w in re.findall(r"\w+", cleaned_query) if len(w) > 1]
+            scored_candidates: List[Tuple[Document, float]] = []
+
+            for doc in candidates:
+                content_lower = doc.content.lower()
+                matches = sum(1 for kw in keywords if kw in content_lower)
+                if matches > 0:
+                    # Normalized score based on matched tokens
+                    score = matches / max(1, len(keywords))
+                    scored_candidates.append((doc, score))
+
+            scored_candidates.sort(key=lambda x: x[1], reverse=True)
+            for doc, score in scored_candidates[:top_k]:
+                result_items.append(
+                    KeywordSearchResultItem(
+                        id=doc.id,
+                        content=doc.content,
+                        metadata=doc.doc_metadata,
+                        rank=round(score, 4),
+                    )
+                )
+
+        return KeywordSearchResponse(
             query=cleaned_query,
             top_k=top_k,
             total_results=len(result_items),
