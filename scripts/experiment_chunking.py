@@ -25,7 +25,7 @@ def run_chunking_experiments() -> Dict[str, Any]:
     with open(guide_path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
-    raw_content = data["content"]
+    raw_content = data[0]["content"] if isinstance(data, list) else data["content"]
     total_chars = len(raw_content)
     total_words = len(raw_content.split())
 

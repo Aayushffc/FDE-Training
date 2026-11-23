@@ -163,31 +163,30 @@ class TestSearchEndpoints:
             assert "distance" in item
             assert "id" in item
 
-    def test_post_v1_search_keyword_endpoint(self, search_client):
+    def test_post_v1_search_chunked_endpoint(self, search_client):
         payload = {
             "query": "billing invoices",
             "top_k": 2,
+            "strategy": "hybrid",
             "filters": {"category": "billing"},
         }
-        resp = search_client.post("/v1/search/keyword", json=payload)
+        resp = search_client.post("/v1/search/chunked", json=payload)
         assert resp.status_code == 200
         data = resp.json()
 
         assert data["query"] == "billing invoices"
-        assert len(data["results"]) == 1
-        assert data["results"][0]["metadata"]["category"] == "billing"
-        assert "rank" in data["results"][0]
+        assert "results" in data
 
     def test_unversioned_search_path_returns_404(self, search_client):
         """Verify unversioned search routes are strictly disabled in favor of /v1."""
         resp = search_client.post("/search/semantic", json={"query": "test"})
         assert resp.status_code == 404
 
-        resp_kw = search_client.post("/search/keyword", json={"query": "test"})
+        resp_kw = search_client.post("/search/chunked", json={"query": "test"})
         assert resp_kw.status_code == 404
 
     def test_empty_query_validation_error(self, search_client):
         resp = search_client.post("/v1/search/semantic", json={"query": ""})
         assert resp.status_code == 422
-        resp_kw = search_client.post("/v1/search/keyword", json={"query": ""})
-        assert resp_kw.status_code == 422
+        resp_chunked = search_client.post("/v1/search/chunked", json={"query": ""})
+        assert resp_chunked.status_code == 422

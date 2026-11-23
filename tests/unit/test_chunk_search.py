@@ -245,15 +245,15 @@ class TestChunkEndpoints:
         assert data["total"] == 1
         assert data["chunks"][0]["id"] == str(chunk.id)
 
-    def test_post_hybrid_search_endpoint(self, test_client, chunk_test_db, mock_embedder):
+    def test_post_chunked_search_endpoint(self, test_client, chunk_test_db, mock_embedder):
         with pytest.MonkeyPatch.context() as mp:
             mp.setattr(
                 "app.services.search_service.get_embedding_provider",
                 lambda: mock_embedder,
             )
             resp = test_client.post(
-                "/v1/search/hybrid",
-                json={"query": "account reset", "top_k": 3, "alpha": 0.5},
+                "/v1/search/chunked",
+                json={"query": "account reset", "top_k": 3, "strategy": "hybrid", "alpha": 0.5},
             )
             assert resp.status_code == 200
             data = resp.json()

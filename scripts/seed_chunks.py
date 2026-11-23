@@ -42,19 +42,28 @@ def seed_chunks(chunk_size: int = 400, chunk_overlap: int = 80):
         with open(guide_path, "r", encoding="utf-8") as f:
             guide_data = json.load(f)
 
-        guide_content = guide_data["content"].strip()
-        existing_guide = db.scalar(select(Document).where(Document.content == guide_content))
-        if not existing_guide:
-            print("\nIngesting 1,000-word comprehensive guide as a parent Document...")
-            guide_doc = ingestion.ingest_document(
-                content=guide_content,
-                metadata=guide_data.get("metadata", {}),
-                skip_duplicates=True,
-            )
-            db.commit()
-            print(f"  -> Created Document ID: {guide_doc.id}")
+        if isinstance(guide_data, list):
+            doc_items = guide_data
         else:
-            print(f"\nComprehensive guide already stored as Document ID: {existing_guide.id}")
+            doc_items = [guide_data]
+
+        for item in doc_items:
+            content = item["content"].strip()
+            meta = item.get("metadata", {})
+            title = item.get("title", "Guide Document")
+            meta["title"] = title
+            existing = db.scalar(select(Document).where(Document.content == content))
+            if not existing:
+                print(f"\nIngesting '{title}' as a parent Document...")
+                guide_doc = ingestion.ingest_document(
+                    content=content,
+                    metadata=meta,
+                    skip_duplicates=True,
+                )
+                db.commit()
+                print(f"  -> Created Document ID: {guide_doc.id}")
+            else:
+                print(f"\n'{title}' already stored as Document ID: {existing.id}")
 
     # 2. Iterate through all documents and create chunks
     all_docs = list(db.scalars(select(Document).order_by(Document.created_at.asc())).all())

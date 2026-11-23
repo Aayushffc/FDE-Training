@@ -1,0 +1,850 @@
+{
+  "dataset": {
+    "parent_documents_count": 4,
+    "total_chunks_count": 96,
+    "chunk_size_chars": 400,
+    "chunk_overlap_chars": 80,
+    "database": "Neon Serverless PostgreSQL (pgvector + tsvector)",
+    "embedding_model": "gemini-embedding-001 (768-dim)"
+  },
+  "aggregate_ir_metrics": {
+    "unchunked_semantic": {
+      "p_at_1": 0.909,
+      "p_at_3": 0.546,
+      "p_at_5": 0.382,
+      "r_at_3": 0.818,
+      "r_at_5": 0.818,
+      "rr": 0.955,
+      "ap_at_5": 0.897,
+      "ndcg_at_5": 0.831
+    },
+    "chunk_keyword": {
+      "p_at_1": 0.182,
+      "p_at_3": 0.061,
+      "p_at_5": 0.036,
+      "r_at_3": 0.091,
+      "r_at_5": 0.091,
+      "rr": 0.182,
+      "ap_at_5": 0.182,
+      "ndcg_at_5": 0.111
+    },
+    "chunk_vector": {
+      "p_at_1": 1.0,
+      "p_at_3": 0.849,
+      "p_at_5": 0.6,
+      "r_at_3": 1.0,
+      "r_at_5": 1.0,
+      "rr": 1.0,
+      "ap_at_5": 0.946,
+      "ndcg_at_5": 0.993
+    },
+    "chunk_hybrid": {
+      "p_at_1": 1.0,
+      "p_at_3": 0.849,
+      "p_at_5": 0.6,
+      "r_at_3": 1.0,
+      "r_at_5": 1.0,
+      "rr": 1.0,
+      "ap_at_5": 0.946,
+      "ndcg_at_5": 0.993
+    },
+    "chunk_reranked": {
+      "p_at_1": 0.818,
+      "p_at_3": 0.697,
+      "p_at_5": 0.527,
+      "r_at_3": 0.909,
+      "r_at_5": 1.0,
+      "rr": 0.909,
+      "ap_at_5": 0.862,
+      "ndcg_at_5": 0.94
+    }
+  },
+  "queries": [
+    {
+      "id": 1,
+      "query": "How can I reset my forgotten password?",
+      "is_in_domain": true,
+      "target_doc": "doc-001-account-billing",
+      "metrics": {
+        "unchunked_semantic": {
+          "p_at_1": 1.0,
+          "p_at_3": 0.667,
+          "p_at_5": 0.4,
+          "r_at_3": 1.0,
+          "r_at_5": 1.0,
+          "rr": 1.0,
+          "ap_at_5": 1.0,
+          "ndcg_at_5": 1.0
+        },
+        "chunk_keyword": {
+          "p_at_1": 0.0,
+          "p_at_3": 0.0,
+          "p_at_5": 0.0,
+          "r_at_3": 0.0,
+          "r_at_5": 0.0,
+          "rr": 0.0,
+          "ap_at_5": 0.0,
+          "ndcg_at_5": 0.0
+        },
+        "chunk_vector": {
+          "p_at_1": 1.0,
+          "p_at_3": 0.667,
+          "p_at_5": 0.6,
+          "r_at_3": 1.0,
+          "r_at_5": 1.0,
+          "rr": 1.0,
+          "ap_at_5": 0.756,
+          "ndcg_at_5": 1.0
+        },
+        "chunk_hybrid": {
+          "p_at_1": 1.0,
+          "p_at_3": 0.667,
+          "p_at_5": 0.6,
+          "r_at_3": 1.0,
+          "r_at_5": 1.0,
+          "rr": 1.0,
+          "ap_at_5": 0.756,
+          "ndcg_at_5": 1.0
+        },
+        "chunk_reranked": {
+          "p_at_1": 0.0,
+          "p_at_3": 0.333,
+          "p_at_5": 0.4,
+          "r_at_3": 0.5,
+          "r_at_5": 1.0,
+          "rr": 0.5,
+          "ap_at_5": 0.5,
+          "ndcg_at_5": 0.651
+        }
+      },
+      "rag": {
+        "answer": "To reset a forgotten password, request an authenticated reset link that will be sent to your account\u2011recovery contact (or submit an identity\u2011verification ticket for an expedited unlock). Follow the link to set a new password; if the link expires before you confirm, request a new verification payload from the authorization portal\u202f[Source\u202f1]\u202f[Source\u202f3].",
+        "citations": [
+          "Source 1",
+          "Source 3"
+        ],
+        "is_grounded": true
+      }
+    },
+    {
+      "id": 2,
+      "query": "What is the lockout duration after failed login attempts?",
+      "is_in_domain": true,
+      "target_doc": "doc-001-account-billing",
+      "metrics": {
+        "unchunked_semantic": {
+          "p_at_1": 1.0,
+          "p_at_3": 0.667,
+          "p_at_5": 0.6,
+          "r_at_3": 1.0,
+          "r_at_5": 1.0,
+          "rr": 1.0,
+          "ap_at_5": 0.917,
+          "ndcg_at_5": 1.0
+        },
+        "chunk_keyword": {
+          "p_at_1": 0.0,
+          "p_at_3": 0.0,
+          "p_at_5": 0.0,
+          "r_at_3": 0.0,
+          "r_at_5": 0.0,
+          "rr": 0.0,
+          "ap_at_5": 0.0,
+          "ndcg_at_5": 0.0
+        },
+        "chunk_vector": {
+          "p_at_1": 1.0,
+          "p_at_3": 1.0,
+          "p_at_5": 0.6,
+          "r_at_3": 1.0,
+          "r_at_5": 1.0,
+          "rr": 1.0,
+          "ap_at_5": 1.0,
+          "ndcg_at_5": 1.0
+        },
+        "chunk_hybrid": {
+          "p_at_1": 1.0,
+          "p_at_3": 1.0,
+          "p_at_5": 0.6,
+          "r_at_3": 1.0,
+          "r_at_5": 1.0,
+          "rr": 1.0,
+          "ap_at_5": 1.0,
+          "ndcg_at_5": 1.0
+        },
+        "chunk_reranked": {
+          "p_at_1": 1.0,
+          "p_at_3": 1.0,
+          "p_at_5": 0.6,
+          "r_at_3": 1.0,
+          "r_at_5": 1.0,
+          "rr": 1.0,
+          "ap_at_5": 1.0,
+          "ndcg_at_5": 1.0
+        }
+      },
+      "rag": {
+        "answer": "The lockout duration after the failed login attempts is **exactly thirty minutes**\u3010Source 1\u3011\u3010Source 2\u3011.",
+        "citations": [
+          "Source 1",
+          "Source 2"
+        ],
+        "is_grounded": true
+      }
+    },
+    {
+      "id": 3,
+      "query": "How do European Union businesses obtain VAT tax exemption?",
+      "is_in_domain": true,
+      "target_doc": "doc-001-account-billing",
+      "metrics": {
+        "unchunked_semantic": {
+          "p_at_1": 1.0,
+          "p_at_3": 0.667,
+          "p_at_5": 0.6,
+          "r_at_3": 1.0,
+          "r_at_5": 1.0,
+          "rr": 1.0,
+          "ap_at_5": 0.806,
+          "ndcg_at_5": 1.0
+        },
+        "chunk_keyword": {
+          "p_at_1": 0.0,
+          "p_at_3": 0.0,
+          "p_at_5": 0.0,
+          "r_at_3": 0.0,
+          "r_at_5": 0.0,
+          "rr": 0.0,
+          "ap_at_5": 0.0,
+          "ndcg_at_5": 0.0
+        },
+        "chunk_vector": {
+          "p_at_1": 1.0,
+          "p_at_3": 0.667,
+          "p_at_5": 0.6,
+          "r_at_3": 1.0,
+          "r_at_5": 1.0,
+          "rr": 1.0,
+          "ap_at_5": 0.917,
+          "ndcg_at_5": 1.0
+        },
+        "chunk_hybrid": {
+          "p_at_1": 1.0,
+          "p_at_3": 0.667,
+          "p_at_5": 0.6,
+          "r_at_3": 1.0,
+          "r_at_5": 1.0,
+          "rr": 1.0,
+          "ap_at_5": 0.917,
+          "ndcg_at_5": 1.0
+        },
+        "chunk_reranked": {
+          "p_at_1": 1.0,
+          "p_at_3": 0.667,
+          "p_at_5": 0.6,
+          "r_at_3": 1.0,
+          "r_at_5": 1.0,
+          "rr": 1.0,
+          "ap_at_5": 0.867,
+          "ndcg_at_5": 1.0
+        }
+      },
+      "rag": {
+        "answer": "European Union businesses obtain VAT tax exemption by entering a valid VIES VAT registration number in the Billing Details section; this triggers an automatic reverse\u2011charge exemption. \u3010Source\u202f1\u3011",
+        "citations": [
+          "Source 1"
+        ],
+        "is_grounded": true
+      }
+    },
+    {
+      "id": 4,
+      "query": "What is the dunning retry schedule when a credit card payment declines?",
+      "is_in_domain": true,
+      "target_doc": "doc-001-account-billing",
+      "metrics": {
+        "unchunked_semantic": {
+          "p_at_1": 0.0,
+          "p_at_3": 0.333,
+          "p_at_5": 0.2,
+          "r_at_3": 0.5,
+          "r_at_5": 0.5,
+          "rr": 0.5,
+          "ap_at_5": 0.5,
+          "ndcg_at_5": 0.387
+        },
+        "chunk_keyword": {
+          "p_at_1": 0.0,
+          "p_at_3": 0.0,
+          "p_at_5": 0.0,
+          "r_at_3": 0.0,
+          "r_at_5": 0.0,
+          "rr": 0.0,
+          "ap_at_5": 0.0,
+          "ndcg_at_5": 0.0
+        },
+        "chunk_vector": {
+          "p_at_1": 1.0,
+          "p_at_3": 0.667,
+          "p_at_5": 0.4,
+          "r_at_3": 1.0,
+          "r_at_5": 1.0,
+          "rr": 1.0,
+          "ap_at_5": 0.833,
+          "ndcg_at_5": 0.92
+        },
+        "chunk_hybrid": {
+          "p_at_1": 1.0,
+          "p_at_3": 0.667,
+          "p_at_5": 0.4,
+          "r_at_3": 1.0,
+          "r_at_5": 1.0,
+          "rr": 1.0,
+          "ap_at_5": 0.833,
+          "ndcg_at_5": 0.92
+        },
+        "chunk_reranked": {
+          "p_at_1": 0.0,
+          "p_at_3": 0.667,
+          "p_at_5": 0.4,
+          "r_at_3": 1.0,
+          "r_at_5": 1.0,
+          "rr": 0.5,
+          "ap_at_5": 0.583,
+          "ndcg_at_5": 0.693
+        }
+      },
+      "rag": {
+        "answer": "The dunning system retries a declined credit\u2011card charge on **day\u202f1, day\u202f3, day\u202f7, and day\u202f14** after the initial failure\u3010Source 2\u3011\u3010Source 3\u3011.",
+        "citations": [
+          "Source 2",
+          "Source 3"
+        ],
+        "is_grounded": true
+      }
+    },
+    {
+      "id": 5,
+      "query": "What are the rate limit quotas on Starter, Pro, and Enterprise tiers?",
+      "is_in_domain": true,
+      "target_doc": "doc-002-api-webhooks",
+      "metrics": {
+        "unchunked_semantic": {
+          "p_at_1": 1.0,
+          "p_at_3": 0.667,
+          "p_at_5": 0.4,
+          "r_at_3": 1.0,
+          "r_at_5": 1.0,
+          "rr": 1.0,
+          "ap_at_5": 1.0,
+          "ndcg_at_5": 1.0
+        },
+        "chunk_keyword": {
+          "p_at_1": 0.0,
+          "p_at_3": 0.0,
+          "p_at_5": 0.0,
+          "r_at_3": 0.0,
+          "r_at_5": 0.0,
+          "rr": 0.0,
+          "ap_at_5": 0.0,
+          "ndcg_at_5": 0.0
+        },
+        "chunk_vector": {
+          "p_at_1": 1.0,
+          "p_at_3": 1.0,
+          "p_at_5": 0.8,
+          "r_at_3": 1.0,
+          "r_at_5": 1.0,
+          "rr": 1.0,
+          "ap_at_5": 0.95,
+          "ndcg_at_5": 1.0
+        },
+        "chunk_hybrid": {
+          "p_at_1": 1.0,
+          "p_at_3": 1.0,
+          "p_at_5": 0.8,
+          "r_at_3": 1.0,
+          "r_at_5": 1.0,
+          "rr": 1.0,
+          "ap_at_5": 0.95,
+          "ndcg_at_5": 1.0
+        },
+        "chunk_reranked": {
+          "p_at_1": 1.0,
+          "p_at_3": 0.333,
+          "p_at_5": 0.6,
+          "r_at_3": 0.5,
+          "r_at_5": 1.0,
+          "rr": 1.0,
+          "ap_at_5": 0.7,
+          "ndcg_at_5": 1.0
+        }
+      },
+      "rag": {
+        "answer": "- **Starter tier:**\u202f100 requests per minute\u3010Source\u202f1\u3011  \n- **Pro tier:**\u202f1,000 requests per minute (with a burst allowance of up to 50 concurrent requests)\u3010Source\u202f1\u3011  \n- **Enterprise tier:**\u202fCustom allocations that can scale up to\u202f10,000 requests per minute\u3010Source\u202f3\u3011",
+        "citations": [
+          "Source 1",
+          "Source 3"
+        ],
+        "is_grounded": true
+      }
+    },
+    {
+      "id": 6,
+      "query": "How do clients verify HMAC-SHA256 signatures on inbound webhooks?",
+      "is_in_domain": true,
+      "target_doc": "doc-002-api-webhooks",
+      "metrics": {
+        "unchunked_semantic": {
+          "p_at_1": 1.0,
+          "p_at_3": 0.333,
+          "p_at_5": 0.2,
+          "r_at_3": 0.5,
+          "r_at_5": 0.5,
+          "rr": 1.0,
+          "ap_at_5": 1.0,
+          "ndcg_at_5": 0.613
+        },
+        "chunk_keyword": {
+          "p_at_1": 0.0,
+          "p_at_3": 0.0,
+          "p_at_5": 0.0,
+          "r_at_3": 0.0,
+          "r_at_5": 0.0,
+          "rr": 0.0,
+          "ap_at_5": 0.0,
+          "ndcg_at_5": 0.0
+        },
+        "chunk_vector": {
+          "p_at_1": 1.0,
+          "p_at_3": 0.667,
+          "p_at_5": 0.4,
+          "r_at_3": 1.0,
+          "r_at_5": 1.0,
+          "rr": 1.0,
+          "ap_at_5": 1.0,
+          "ndcg_at_5": 1.0
+        },
+        "chunk_hybrid": {
+          "p_at_1": 1.0,
+          "p_at_3": 0.667,
+          "p_at_5": 0.4,
+          "r_at_3": 1.0,
+          "r_at_5": 1.0,
+          "rr": 1.0,
+          "ap_at_5": 1.0,
+          "ndcg_at_5": 1.0
+        },
+        "chunk_reranked": {
+          "p_at_1": 1.0,
+          "p_at_3": 0.667,
+          "p_at_5": 0.4,
+          "r_at_3": 1.0,
+          "r_at_5": 1.0,
+          "rr": 1.0,
+          "ap_at_5": 1.0,
+          "ndcg_at_5": 1.0
+        }
+      },
+      "rag": {
+        "answer": "Clients verify the signature by recomputing the HMAC\u2011SHA256 hash of the **raw JSON request body** using their shared webhook signing secret, then comparing this computed hash to the value provided in the **X\u2011Signature\u2011SHA256** header. The comparison must be performed in constant time before any business logic is executed\u3010Source\u202f2\u3011. The header itself is included with every webhook delivery to enable this verification\u3010Source\u202f1\u3011.",
+        "citations": [
+          "Source 2",
+          "Source 1"
+        ],
+        "is_grounded": true
+      }
+    },
+    {
+      "id": 7,
+      "query": "How does the Idempotency-Key header prevent duplicate payments?",
+      "is_in_domain": true,
+      "target_doc": "doc-002-api-webhooks",
+      "metrics": {
+        "unchunked_semantic": {
+          "p_at_1": 1.0,
+          "p_at_3": 0.667,
+          "p_at_5": 0.4,
+          "r_at_3": 1.0,
+          "r_at_5": 1.0,
+          "rr": 1.0,
+          "ap_at_5": 1.0,
+          "ndcg_at_5": 1.0
+        },
+        "chunk_keyword": {
+          "p_at_1": 1.0,
+          "p_at_3": 0.333,
+          "p_at_5": 0.2,
+          "r_at_3": 0.5,
+          "r_at_5": 0.5,
+          "rr": 1.0,
+          "ap_at_5": 1.0,
+          "ndcg_at_5": 0.613
+        },
+        "chunk_vector": {
+          "p_at_1": 1.0,
+          "p_at_3": 0.667,
+          "p_at_5": 0.4,
+          "r_at_3": 1.0,
+          "r_at_5": 1.0,
+          "rr": 1.0,
+          "ap_at_5": 1.0,
+          "ndcg_at_5": 1.0
+        },
+        "chunk_hybrid": {
+          "p_at_1": 1.0,
+          "p_at_3": 0.667,
+          "p_at_5": 0.4,
+          "r_at_3": 1.0,
+          "r_at_5": 1.0,
+          "rr": 1.0,
+          "ap_at_5": 1.0,
+          "ndcg_at_5": 1.0
+        },
+        "chunk_reranked": {
+          "p_at_1": 1.0,
+          "p_at_3": 0.667,
+          "p_at_5": 0.4,
+          "r_at_3": 1.0,
+          "r_at_5": 1.0,
+          "rr": 1.0,
+          "ap_at_5": 1.0,
+          "ndcg_at_5": 1.0
+        }
+      },
+      "rag": {
+        "answer": "The Idempotency\u2011Key header carries a client\u2011generated UUID\u202fv4 that uniquely identifies a payment request. When the gateway receives such a request, it stores the resulting response in Redis for 24\u202fhours. If the same request is sent again (e.g., after a network glitch) with the identical Idempotency\u2011Key, the gateway detects the cached entry, returns it with an **X\u2011Cache\u2011Lookup:\u202fHIT** header, and **does not re\u2011execute the database mutation or credit\u2011card charge**\u3010Source\u202f1\u3011\u3010Source\u202f2\u3011. This ensures that only one charge is processed even if the request is retried.",
+        "citations": [
+          "Source 1",
+          "Source 2"
+        ],
+        "is_grounded": true
+      }
+    },
+    {
+      "id": 8,
+      "query": "How does Customer-Managed Encryption Keys (CMEK) work with AWS KMS?",
+      "is_in_domain": true,
+      "target_doc": "doc-003-security-compliance",
+      "metrics": {
+        "unchunked_semantic": {
+          "p_at_1": 1.0,
+          "p_at_3": 0.333,
+          "p_at_5": 0.2,
+          "r_at_3": 0.5,
+          "r_at_5": 0.5,
+          "rr": 1.0,
+          "ap_at_5": 1.0,
+          "ndcg_at_5": 0.613
+        },
+        "chunk_keyword": {
+          "p_at_1": 0.0,
+          "p_at_3": 0.0,
+          "p_at_5": 0.0,
+          "r_at_3": 0.0,
+          "r_at_5": 0.0,
+          "rr": 0.0,
+          "ap_at_5": 0.0,
+          "ndcg_at_5": 0.0
+        },
+        "chunk_vector": {
+          "p_at_1": 1.0,
+          "p_at_3": 1.0,
+          "p_at_5": 0.8,
+          "r_at_3": 1.0,
+          "r_at_5": 1.0,
+          "rr": 1.0,
+          "ap_at_5": 1.0,
+          "ndcg_at_5": 1.0
+        },
+        "chunk_hybrid": {
+          "p_at_1": 1.0,
+          "p_at_3": 1.0,
+          "p_at_5": 0.8,
+          "r_at_3": 1.0,
+          "r_at_5": 1.0,
+          "rr": 1.0,
+          "ap_at_5": 1.0,
+          "ndcg_at_5": 1.0
+        },
+        "chunk_reranked": {
+          "p_at_1": 1.0,
+          "p_at_3": 0.667,
+          "p_at_5": 0.6,
+          "r_at_3": 1.0,
+          "r_at_5": 1.0,
+          "rr": 1.0,
+          "ap_at_5": 0.917,
+          "ndcg_at_5": 1.0
+        }
+      },
+      "rag": {
+        "answer": "Customer\u2011Managed Encryption Keys (CME\u202fK) can be linked to AWS Key Management Service (AWS\u202fKMS) so that Enterprise\u2011tier customers retain sovereign control over their cryptographic keys. When CMEK is enabled and configured with AWS\u202fKMS, the service\u2019s storage layer requests real\u2011time key grants from the AWS\u2011managed keys to encrypt and decrypt data objects\u202f[Source\u202f1].",
+        "citations": [
+          "Source 1"
+        ],
+        "is_grounded": true
+      }
+    },
+    {
+      "id": 9,
+      "query": "What are the platform RPO and RTO disaster recovery guarantees?",
+      "is_in_domain": true,
+      "target_doc": "doc-003-security-compliance",
+      "metrics": {
+        "unchunked_semantic": {
+          "p_at_1": 1.0,
+          "p_at_3": 0.667,
+          "p_at_5": 0.4,
+          "r_at_3": 1.0,
+          "r_at_5": 1.0,
+          "rr": 1.0,
+          "ap_at_5": 0.833,
+          "ndcg_at_5": 0.92
+        },
+        "chunk_keyword": {
+          "p_at_1": 1.0,
+          "p_at_3": 0.333,
+          "p_at_5": 0.2,
+          "r_at_3": 0.5,
+          "r_at_5": 0.5,
+          "rr": 1.0,
+          "ap_at_5": 1.0,
+          "ndcg_at_5": 0.613
+        },
+        "chunk_vector": {
+          "p_at_1": 1.0,
+          "p_at_3": 1.0,
+          "p_at_5": 0.6,
+          "r_at_3": 1.0,
+          "r_at_5": 1.0,
+          "rr": 1.0,
+          "ap_at_5": 1.0,
+          "ndcg_at_5": 1.0
+        },
+        "chunk_hybrid": {
+          "p_at_1": 1.0,
+          "p_at_3": 1.0,
+          "p_at_5": 0.6,
+          "r_at_3": 1.0,
+          "r_at_5": 1.0,
+          "rr": 1.0,
+          "ap_at_5": 1.0,
+          "ndcg_at_5": 1.0
+        },
+        "chunk_reranked": {
+          "p_at_1": 1.0,
+          "p_at_3": 1.0,
+          "p_at_5": 0.6,
+          "r_at_3": 1.0,
+          "r_at_5": 1.0,
+          "rr": 1.0,
+          "ap_at_5": 1.0,
+          "ndcg_at_5": 1.0
+        }
+      },
+      "rag": {
+        "answer": "The platform guarantees a **Recovery Point Objective (RPO) of less than one minute** and a **Recovery Time Objective (RTO) of less than fifteen minutes** for total primary\u2011region outages\u3010Source 1\u3011\u3010Source 3\u3011.",
+        "citations": [
+          "Source 1",
+          "Source 3"
+        ],
+        "is_grounded": true
+      }
+    },
+    {
+      "id": 10,
+      "query": "Why is HNSW indexing superior to IVFFlat for high-dimensional vectors?",
+      "is_in_domain": true,
+      "target_doc": "doc-004-ai-vector-rag",
+      "metrics": {
+        "unchunked_semantic": {
+          "p_at_1": 1.0,
+          "p_at_3": 0.333,
+          "p_at_5": 0.2,
+          "r_at_3": 0.5,
+          "r_at_5": 0.5,
+          "rr": 1.0,
+          "ap_at_5": 1.0,
+          "ndcg_at_5": 0.613
+        },
+        "chunk_keyword": {
+          "p_at_1": 0.0,
+          "p_at_3": 0.0,
+          "p_at_5": 0.0,
+          "r_at_3": 0.0,
+          "r_at_5": 0.0,
+          "rr": 0.0,
+          "ap_at_5": 0.0,
+          "ndcg_at_5": 0.0
+        },
+        "chunk_vector": {
+          "p_at_1": 1.0,
+          "p_at_3": 1.0,
+          "p_at_5": 0.6,
+          "r_at_3": 1.0,
+          "r_at_5": 1.0,
+          "rr": 1.0,
+          "ap_at_5": 1.0,
+          "ndcg_at_5": 1.0
+        },
+        "chunk_hybrid": {
+          "p_at_1": 1.0,
+          "p_at_3": 1.0,
+          "p_at_5": 0.6,
+          "r_at_3": 1.0,
+          "r_at_5": 1.0,
+          "rr": 1.0,
+          "ap_at_5": 1.0,
+          "ndcg_at_5": 1.0
+        },
+        "chunk_reranked": {
+          "p_at_1": 1.0,
+          "p_at_3": 0.667,
+          "p_at_5": 0.6,
+          "r_at_3": 1.0,
+          "r_at_5": 1.0,
+          "rr": 1.0,
+          "ap_at_5": 0.917,
+          "ndcg_at_5": 1.0
+        }
+      },
+      "rag": {
+        "answer": "HNSW indexing is considered superior to IVFFlat for high\u2011dimensional vectors because it delivers higher recall (over\u202f98\u202f%), supports incremental online insertions without needing to rebuild the index, and its performance does not degrade as the number of vectors grows. Its multi\u2011layer graph structure enables logarithmic\u2011time searches (O(log\u202fN)), providing sub\u2011ten\u2011millisecond latency even on millions of candidates. In contrast, IVFFlat relies on Voronoi\u2011cell clustering that must be periodically retrained, which can limit recall and scalability\u3010Source\u202f2\u3011\u3010Source\u202f3\u3011.",
+        "citations": [
+          "Source 2",
+          "Source 3"
+        ],
+        "is_grounded": true
+      }
+    },
+    {
+      "id": 11,
+      "query": "What smoothing constant k and alpha are used in Reciprocal Rank Fusion?",
+      "is_in_domain": true,
+      "target_doc": "doc-004-ai-vector-rag",
+      "metrics": {
+        "unchunked_semantic": {
+          "p_at_1": 1.0,
+          "p_at_3": 0.667,
+          "p_at_5": 0.6,
+          "r_at_3": 1.0,
+          "r_at_5": 1.0,
+          "rr": 1.0,
+          "ap_at_5": 0.806,
+          "ndcg_at_5": 1.0
+        },
+        "chunk_keyword": {
+          "p_at_1": 0.0,
+          "p_at_3": 0.0,
+          "p_at_5": 0.0,
+          "r_at_3": 0.0,
+          "r_at_5": 0.0,
+          "rr": 0.0,
+          "ap_at_5": 0.0,
+          "ndcg_at_5": 0.0
+        },
+        "chunk_vector": {
+          "p_at_1": 1.0,
+          "p_at_3": 1.0,
+          "p_at_5": 0.8,
+          "r_at_3": 1.0,
+          "r_at_5": 1.0,
+          "rr": 1.0,
+          "ap_at_5": 0.95,
+          "ndcg_at_5": 1.0
+        },
+        "chunk_hybrid": {
+          "p_at_1": 1.0,
+          "p_at_3": 1.0,
+          "p_at_5": 0.8,
+          "r_at_3": 1.0,
+          "r_at_5": 1.0,
+          "rr": 1.0,
+          "ap_at_5": 0.95,
+          "ndcg_at_5": 1.0
+        },
+        "chunk_reranked": {
+          "p_at_1": 1.0,
+          "p_at_3": 1.0,
+          "p_at_5": 0.6,
+          "r_at_3": 1.0,
+          "r_at_5": 1.0,
+          "rr": 1.0,
+          "ap_at_5": 1.0,
+          "ndcg_at_5": 1.0
+        }
+      },
+      "rag": {
+        "answer": "The Reciprocal Rank Fusion uses a smoothing constant **k\u202f=\u202f60** and a default branch\u2011weight **alpha\u202f=\u202f0.5**\u202f[Source\u202f2].",
+        "citations": [
+          "Source 2"
+        ],
+        "is_grounded": true
+      }
+    },
+    {
+      "id": 12,
+      "query": "What is the exact average distance between the Earth and the Moon in kilometers?",
+      "is_in_domain": false,
+      "target_doc": null,
+      "metrics": {
+        "unchunked_semantic": {
+          "p_at_1": 0.0,
+          "p_at_3": 0.0,
+          "p_at_5": 0.0,
+          "r_at_3": 1.0,
+          "r_at_5": 1.0,
+          "rr": 1.0,
+          "ap_at_5": 1.0,
+          "ndcg_at_5": 1.0
+        },
+        "chunk_keyword": {
+          "p_at_1": 1.0,
+          "p_at_3": 1.0,
+          "p_at_5": 1.0,
+          "r_at_3": 1.0,
+          "r_at_5": 1.0,
+          "rr": 1.0,
+          "ap_at_5": 1.0,
+          "ndcg_at_5": 1.0
+        },
+        "chunk_vector": {
+          "p_at_1": 0.0,
+          "p_at_3": 0.0,
+          "p_at_5": 0.0,
+          "r_at_3": 1.0,
+          "r_at_5": 1.0,
+          "rr": 1.0,
+          "ap_at_5": 1.0,
+          "ndcg_at_5": 1.0
+        },
+        "chunk_hybrid": {
+          "p_at_1": 0.0,
+          "p_at_3": 0.0,
+          "p_at_5": 0.0,
+          "r_at_3": 1.0,
+          "r_at_5": 1.0,
+          "rr": 1.0,
+          "ap_at_5": 1.0,
+          "ndcg_at_5": 1.0
+        },
+        "chunk_reranked": {
+          "p_at_1": 0.0,
+          "p_at_3": 0.0,
+          "p_at_5": 0.0,
+          "r_at_3": 1.0,
+          "r_at_5": 1.0,
+          "rr": 1.0,
+          "ap_at_5": 1.0,
+          "ndcg_at_5": 1.0
+        }
+      },
+      "rag": {
+        "answer": "I don't know based on the provided context.",
+        "citations": [],
+        "is_grounded": false
+      }
+    }
+  ]
+}
