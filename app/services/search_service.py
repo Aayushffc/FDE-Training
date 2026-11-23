@@ -6,11 +6,14 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.infrastructure.embedding_providers import BaseEmbeddingProvider, get_embedding_provider
+from app.infrastructure.ranking.rrf import compute_rrf_score
 from app.models.document import Document
 from app.models.document_chunk import DocumentChunk
 from app.schemas.search import (
     ChunkSearchResponse,
     ChunkSearchResultItem,
+    DocumentHybridSearchResponse,
+    DocumentHybridSearchResultItem,
     HybridChunkSearchResultItem,
     HybridSearchResponse,
     KeywordSearchResultItem,
@@ -56,6 +59,8 @@ class SearchService:
         """Helper to apply JSON metadata equality filters (DRY)."""
         if filters:
             for key, val in filters.items():
+                if not key or key.startswith("additionalProp") or (isinstance(val, (dict, list)) and not val):
+                    continue
                 stmt = stmt.where(Document.doc_metadata[key].as_string() == str(val))
         return stmt
 
@@ -63,6 +68,8 @@ class SearchService:
         """Helper to apply JSON metadata equality filters on chunk metadata."""
         if filters:
             for key, val in filters.items():
+                if not key or key.startswith("additionalProp") or (isinstance(val, (dict, list)) and not val):
+                    continue
                 stmt = stmt.where(DocumentChunk.chunk_metadata[key].as_string() == str(val))
         return stmt
 
@@ -215,6 +222,78 @@ class SearchService:
             top_k=top_k,
             total_results=len(result_items),
             results=result_items,
+        )
+
+    def document_hybrid_search(
+        self,
+        query: str,
+        top_k: int = 5,
+        filters: Optional[Dict[str, Any]] = None,
+        alpha: float = 0.5,
+        rrf_k: int = 60,
+    ) -> DocumentHybridSearchResponse:
+        """
+        Execute hybrid search over UNCHUNKED parent documents combining vector similarity and keyword search ranks.
+        Uses Reciprocal Rank Fusion (RRF): RRF_Score = sum(w / (k + rank)).
+        """
+        cleaned_query = query.strip()
+        if not cleaned_query:
+            raise ValueError("Search query cannot be empty.")
+
+        fetch_k = max(top_k * 3, 20)
+        vec_res = self.semantic_search(query=cleaned_query, top_k=fetch_k, filters=filters)
+        kw_res = self.keyword_search(query=cleaned_query, top_k=fetch_k, filters=filters)
+
+        vector_map: Dict[Any, Tuple[int, Any]] = {
+            item.id: (rank, item) for rank, item in enumerate(vec_res.results, start=1)
+        }
+        keyword_map: Dict[Any, Tuple[int, Any]] = {
+            item.id: (rank, item) for rank, item in enumerate(kw_res.results, start=1)
+        }
+
+        all_doc_ids = list(dict.fromkeys(list(vector_map.keys()) + list(keyword_map.keys())))
+        fused_items: List[DocumentHybridSearchResultItem] = []
+
+        for did in all_doc_ids:
+            in_vec = did in vector_map
+            in_kw = did in keyword_map
+            v_rank, v_item = vector_map[did] if in_vec else (None, None)
+            k_rank, k_item = keyword_map[did] if in_kw else (None, None)
+
+            rrf_score = 0.0
+            if in_vec:
+                rrf_score += compute_rrf_score(v_rank, weight=alpha, k=rrf_k)
+            if in_kw:
+                rrf_score += compute_rrf_score(k_rank, weight=(1.0 - alpha), k=rrf_k)
+
+            base = v_item or k_item
+            matched = "both" if (in_vec and in_kw) else ("vector_only" if in_vec else "keyword_only")
+
+            fused_items.append(
+                DocumentHybridSearchResultItem(
+                    id=base.id,
+                    content=base.content,
+                    metadata=base.metadata,
+                    combined_score=round(rrf_score, 6),
+                    vector_rank=v_rank,
+                    keyword_rank=k_rank,
+                    vector_similarity=v_item.similarity if in_vec else None,
+                    keyword_score=k_item.rank if in_kw else None,
+                    matched_by=matched,
+                    embedding_model=getattr(v_item, "embedding_model", None),
+                )
+            )
+
+        fused_items.sort(key=lambda x: x.combined_score, reverse=True)
+
+        return DocumentHybridSearchResponse(
+            query=cleaned_query,
+            top_k=top_k,
+            total_results=len(all_doc_ids),
+            search_type="document_hybrid",
+            fusion_method="rrf",
+            alpha=alpha,
+            results=fused_items[:top_k],
         )
 
     def chunk_vector_search(
@@ -452,9 +531,9 @@ class SearchService:
 
                 rrf_score = 0.0
                 if in_vec:
-                    rrf_score += alpha / (rrf_k + v_rank)
+                    rrf_score += compute_rrf_score(v_rank, weight=alpha, k=rrf_k)
                 if in_kw:
-                    rrf_score += (1.0 - alpha) / (rrf_k + k_rank)
+                    rrf_score += compute_rrf_score(k_rank, weight=(1.0 - alpha), k=rrf_k)
 
                 base = v_item or k_item
                 matched = "both" if (in_vec and in_kw) else ("vector_only" if in_vec else "keyword_only")

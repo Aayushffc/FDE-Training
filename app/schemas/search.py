@@ -109,31 +109,22 @@ class KeywordSearchResponse(BaseModel):
 class HybridSearchRequest(BaseSearchRequest):
     """
     Payload for hybrid search combining vector semantic retrieval and keyword FTS.
+    Fuses candidates using Reciprocal Rank Fusion (RRF k=60).
     """
     alpha: float = Field(
         default=0.5,
         ge=0.0,
         le=1.0,
-        description="Weight for vector search in linear fusion; (1 - alpha) is used for keyword search.",
+        description="Weight for vector search (0.0 = full keyword, 1.0 = full vector, 0.5 = balanced).",
         examples=[0.5],
-    )
-    rrf_k: int = Field(
-        default=60,
-        ge=1,
-        le=1000,
-        description="Smoothing constant for Reciprocal Rank Fusion (standard default 60).",
-        examples=[60],
-    )
-    fusion_method: str = Field(
-        default="rrf",
-        description="Rank fusion strategy: 'rrf' (Reciprocal Rank Fusion) or 'weighted' (score normalization).",
-        examples=["rrf"],
     )
     rerank: bool = Field(
         default=False,
         description="Whether to apply cross-encoder reranking to reorder the fused candidates.",
         examples=[False],
     )
+
+    model_config = ConfigDict(extra="ignore")
 
 
 class ChunkedSearchRequest(BaseSearchRequest):
@@ -242,4 +233,43 @@ class HybridSearchResponse(BaseModel):
     fusion_method: str = Field(default="rrf", description="Fusion algorithm used ('rrf' or 'weighted')")
     alpha: float = Field(default=0.5, description="Vector balance weight used")
     results: List[HybridChunkSearchResultItem] = Field(default_factory=list, description="Ranked fused results")
+
+
+class DocumentHybridSearchResultItem(BaseModel):
+    """
+    Search result item for hybrid retrieval over unchunked parent documents.
+    """
+    id: uuid.UUID = Field(..., description="Unique document ID")
+    content: str = Field(..., description="Document text content")
+    metadata: Dict[str, Any] = Field(
+        default_factory=dict,
+        validation_alias=AliasChoices("doc_metadata", "metadata"),
+        serialization_alias="metadata",
+        description="Document metadata",
+    )
+    combined_score: float = Field(..., description="Combined fusion score (RRF score)")
+    vector_rank: Optional[int] = Field(default=None, description="1-based rank in vector search (if matched)")
+    keyword_rank: Optional[int] = Field(default=None, description="1-based rank in keyword search (if matched)")
+    vector_similarity: Optional[float] = Field(default=None, description="Raw cosine similarity score")
+    keyword_score: Optional[float] = Field(default=None, description="Raw full-text ts_rank score")
+    matched_by: str = Field(
+        default="both",
+        description="Which retrieval branch matched this document ('both', 'vector_only', 'keyword_only')",
+    )
+    embedding_model: Optional[str] = Field(default=None, description="Model used to produce embedding")
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+
+class DocumentHybridSearchResponse(BaseModel):
+    """
+    Response schema for hybrid search over unchunked parent documents.
+    """
+    query: str = Field(..., description="Original search query")
+    top_k: int = Field(..., description="Requested top-K limit")
+    total_results: int = Field(..., description="Number of matching documents returned")
+    search_type: str = Field(default="document_hybrid", description="Type of search executed")
+    fusion_method: str = Field(default="rrf", description="Fusion algorithm used")
+    alpha: float = Field(default=0.5, description="Vector balance weight used")
+    results: List[DocumentHybridSearchResultItem] = Field(default_factory=list, description="Ranked fused documents")
 

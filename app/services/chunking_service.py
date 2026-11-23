@@ -2,6 +2,11 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
+from app.infrastructure.text_processing import (
+    clean_text as _clean_text,
+    validate_chunk_params as _validate_chunk_params,
+)
+
 
 @dataclass
 class ChunkItem:
@@ -24,34 +29,13 @@ class ChunkingService:
 
     @staticmethod
     def clean_text(text: str) -> str:
-        """
-        Normalize and clean raw document text:
-        - Replaces non-breaking spaces and irregular whitespace
-        - Collapses repeated blank lines (>2 newlines to 2)
-        - Normalizes trailing/leading spaces on lines
-        """
-        if not text:
-            return ""
-        # Normalize carriage returns and non-breaking spaces
-        normalized = text.replace("\r\n", "\n").replace("\r", "\n").replace("\xa0", " ")
-        # Strip trailing whitespaces on each line
-        lines = [line.strip() for line in normalized.split("\n")]
-        # Rejoin with single newlines, collapsing 3+ newlines into 2
-        joined = "\n".join(lines)
-        cleaned = re.sub(r"\n{3,}", "\n\n", joined).strip()
-        return cleaned
+        """Normalize and clean raw document text using infrastructure text processor."""
+        return _clean_text(text)
 
     @staticmethod
     def validate_params(chunk_size: int, chunk_overlap: int) -> None:
         """Ensure chunk size and overlap adhere to operational bounds."""
-        if chunk_size <= 0:
-            raise ValueError(f"chunk_size must be a positive integer, got {chunk_size}")
-        if chunk_overlap < 0:
-            raise ValueError(f"chunk_overlap must be non-negative, got {chunk_overlap}")
-        if chunk_overlap >= chunk_size:
-            raise ValueError(
-                f"chunk_overlap ({chunk_overlap}) must be strictly less than chunk_size ({chunk_size})"
-            )
+        _validate_chunk_params(chunk_size, chunk_overlap)
 
     def split_by_characters(
         self,

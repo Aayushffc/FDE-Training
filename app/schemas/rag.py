@@ -26,9 +26,9 @@ class RAGRequest(BaseModel):
         examples=["How can I recover my account after too many failed attempts?"],
     )
     retrieval_strategy: str = Field(
-        default="hybrid",
-        description="Retrieval strategy: 'hybrid' (RRF, recommended), 'vector', or 'keyword'",
-        examples=["hybrid"],
+        default="vector",
+        description="Retrieval strategy: 'vector' (semantic, default), 'keyword', or 'hybrid'",
+        examples=["vector"],
     )
     rerank: bool = Field(
         default=True,
@@ -41,21 +41,16 @@ class RAGRequest(BaseModel):
         description="Number of candidate chunks to retrieve and consider",
     )
     provider: Optional[str] = Field(
-        default=None,
-        description="LLM provider for answer synthesis (defaults to GROQ or OPENAI)",
+        default="groq",
+        description="LLM provider for answer synthesis: 'groq', 'openai', or 'anthropic'",
+        examples=["groq"],
     )
-    model: Optional[str] = Field(
-        default=None,
-        description="Model name override",
-    )
-    filters: Optional[Dict[str, Any]] = Field(
-        default=None,
-        description="Optional metadata filters (e.g. {'category': 'account'})",
-    )
+
+    model_config = ConfigDict(extra="ignore")
 
 
 class RAGResponse(BaseModel):
-    """Response payload containing generated answer, cited sources, and grounding state."""
+    """Response payload containing generated answer, cited sources, grounding state, and execution metrics."""
 
     question: str = Field(..., description="The original question answered")
     answer: str = Field(..., description="Synthesized answer strictly grounded in the context")
@@ -65,3 +60,13 @@ class RAGResponse(BaseModel):
     is_grounded: bool = Field(..., description="True if answer was synthesized; False if model returned 'I don't know'")
     citations: List[str] = Field(default_factory=list, description="Explicit source tags found in the generated answer text")
     total_sources_evaluated: int = Field(..., description="Total candidate sources evaluated in the context")
+
+    # Performance, Token Consumption, and Pricing Metrics
+    latency_ms: float = Field(default=0.0, ge=0, description="Total pipeline latency (retrieval + rerank + synthesis) in milliseconds")
+    llm_latency_ms: Optional[float] = Field(default=None, ge=0, description="Inference latency of the LLM generation step in milliseconds")
+    input_tokens: int = Field(default=0, ge=0, description="Input / prompt token count consumed")
+    output_tokens: int = Field(default=0, ge=0, description="Completion / answer token count generated")
+    total_tokens: int = Field(default=0, ge=0, description="Total tokens consumed (input + output)")
+    estimated_cost_usd: float = Field(default=0.0, ge=0, description="Estimated total LLM inference cost in USD")
+    provider: Optional[str] = Field(default=None, description="LLM provider that synthesized the answer (e.g. 'groq', 'openai')")
+    model: Optional[str] = Field(default=None, description="Model identifier used for inference")

@@ -1,6 +1,7 @@
 import asyncio
 import os
 import re
+import time
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from sqlalchemy.orm import Session
@@ -30,13 +31,14 @@ class RAGService:
         db: Session,
         search_service: Optional[SearchService] = None,
         reranking_service: Optional[RerankingService] = None,
+        reranker: Optional[Any] = None,
         context_service: Optional[ContextEngineeringService] = None,
         registry: Optional[Any] = None,
         prompt_service: Optional[Any] = None,
     ) -> None:
         self.db = db
         self.search_service = search_service or SearchService(db=db)
-        self.reranker = reranking_service or RerankingService()
+        self.reranker = reranking_service or reranker or RerankingService()
         self.context_service = context_service or ContextEngineeringService()
         if prompt_service is not None:
             self.prompt_service = prompt_service
@@ -94,6 +96,7 @@ class RAGService:
         Coordinates full RAG pipeline:
         Retrieve -> Rerank (optional) -> Context Assembly -> LLM Synthesis -> Citation Validation.
         """
+        start_time = time.perf_counter()
         strat = payload.retrieval_strategy.lower()
         candidate_count = payload.top_k * 2 if payload.rerank else payload.top_k
 
@@ -102,10 +105,11 @@ class RAGService:
             question=payload.question,
             strategy=strat,
             top_k=candidate_count,
-            filters=payload.filters,
+            filters=getattr(payload, "filters", None),
         )
 
         if not raw_candidates:
+            total_latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
             return RAGResponse(
                 question=payload.question,
                 answer="I don't know based on the provided context.",
@@ -115,6 +119,14 @@ class RAGService:
                 is_grounded=False,
                 citations=[],
                 total_sources_evaluated=0,
+                latency_ms=total_latency_ms,
+                llm_latency_ms=0.0,
+                input_tokens=0,
+                output_tokens=0,
+                total_tokens=0,
+                estimated_cost_usd=0.0,
+                provider=getattr(payload, "provider", None),
+                model=None,
             )
 
         # 2. Reranking (Phase 4)
@@ -147,6 +159,14 @@ class RAGService:
                 provider = self.registry.get(provider_name)
 
         answer_text = ""
+        input_tokens = 0
+        output_tokens = 0
+        total_tokens = 0
+        estimated_cost_usd = 0.0
+        llm_latency_ms = None
+        used_provider = provider_name
+        used_model = None
+
         if provider:
             try:
                 llm_resp = await provider.generate_chat_completion(
@@ -154,6 +174,13 @@ class RAGService:
                     system_prompt=system_prompt,
                 )
                 answer_text = (getattr(llm_resp, "reply", None) or getattr(llm_resp, "content", "")).strip()
+                input_tokens = getattr(llm_resp, "input_tokens", 0)
+                output_tokens = getattr(llm_resp, "output_tokens", 0)
+                total_tokens = input_tokens + output_tokens
+                llm_latency_ms = getattr(llm_resp, "latency_ms", None)
+                estimated_cost_usd = getattr(llm_resp, "estimated_cost_usd", 0.0)
+                used_provider = getattr(llm_resp, "provider", provider_name)
+                used_model = getattr(llm_resp, "model", None)
             except Exception:
                 # If upstream LLM provider is unavailable in test environment, extract best source or admit ignorance
                 top_chunk = ordered_candidates[0]
@@ -165,6 +192,9 @@ class RAGService:
                     answer_text = f"According to [Source 1], {top_text}"
                 else:
                     answer_text = "I don't know based on the provided context."
+                input_tokens = len(user_prompt.split())
+                output_tokens = len(answer_text.split())
+                total_tokens = input_tokens + output_tokens
         else:
             # Deterministic fallback when no LLM registered
             top_chunk = ordered_candidates[0]
@@ -175,6 +205,9 @@ class RAGService:
                 answer_text = f"According to [Source 1], {top_text}"
             else:
                 answer_text = "I don't know based on the provided context."
+            input_tokens = len(user_prompt.split())
+            output_tokens = len(answer_text.split())
+            total_tokens = input_tokens + output_tokens
 
         # 5. Extract Citations & Verify Grounding
         raw_tags = re.findall(r"[\[【](Source\s*\d+)[\]】]", answer_text)
@@ -190,7 +223,6 @@ class RAGService:
 
         source_items: List[RAGSourceItem] = []
         for src in manifest:
-            # If explicit citations exist, include matching sources first, or all admitted sources
             source_items.append(
                 RAGSourceItem(
                     source_label=src["source_label"],
@@ -202,6 +234,8 @@ class RAGService:
                 )
             )
 
+        total_latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
+
         return RAGResponse(
             question=payload.question,
             answer=answer_text,
@@ -211,6 +245,14 @@ class RAGService:
             is_grounded=is_grounded,
             citations=cited_tags,
             total_sources_evaluated=len(source_items),
+            latency_ms=total_latency_ms,
+            llm_latency_ms=llm_latency_ms,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            total_tokens=total_tokens,
+            estimated_cost_usd=round(estimated_cost_usd, 6),
+            provider=used_provider,
+            model=used_model,
         )
 
     def ask(self, payload: RAGRequest) -> RAGResponse:
