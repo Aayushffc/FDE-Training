@@ -136,6 +136,37 @@ class HybridSearchRequest(BaseSearchRequest):
     )
 
 
+class ChunkedSearchRequest(BaseSearchRequest):
+    """
+    Payload for executing search strictly over document chunks.
+    Supports strategy: 'hybrid' (vector + keyword RRF), 'vector' (semantic only), or 'keyword' (FTS only).
+    """
+    strategy: str = Field(
+        default="hybrid",
+        description="Retrieval strategy: 'hybrid' (vector + keyword RRF), 'vector' (semantic only), or 'keyword' (FTS only).",
+        examples=["hybrid"],
+    )
+    alpha: float = Field(
+        default=0.5,
+        ge=0.0,
+        le=1.0,
+        description="Weight for vector search in linear fusion; (1 - alpha) is used for keyword search.",
+        examples=[0.5],
+    )
+    rrf_k: int = Field(
+        default=60,
+        ge=1,
+        le=1000,
+        description="Smoothing constant for Reciprocal Rank Fusion (standard default 60).",
+        examples=[60],
+    )
+    rerank: bool = Field(
+        default=False,
+        description="Whether to apply cross-encoder reranking to reorder the candidate chunks.",
+        examples=[False],
+    )
+
+
 class ChunkSearchResultItem(BaseModel):
     """
     Search result item representing a retrieved document chunk.

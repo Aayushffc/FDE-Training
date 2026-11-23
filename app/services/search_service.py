@@ -79,40 +79,13 @@ class SearchService:
         query: str,
         top_k: int = 5,
         filters: Optional[Dict[str, Any]] = None,
-        search_target: Optional[str] = None,
     ) -> SemanticSearchResponse:
         """
-        Execute semantic cosine similarity search.
-        Defaults to searching 'document_chunks' if chunks exist, otherwise falls back to 'documents'.
+        Execute semantic cosine similarity search strictly over stored UNCHUNKED documents.
         """
         cleaned_query = query.strip()
         if not cleaned_query:
             raise ValueError("Search query cannot be empty.")
-
-        target_chunks = (search_target == "chunks") or (search_target != "documents" and self.has_chunks())
-
-        # If searching chunks, delegate to chunk search logic
-        if target_chunks:
-            chunk_resp = self.chunk_vector_search(query=cleaned_query, top_k=top_k, filters=filters)
-            return SemanticSearchResponse(
-                query=cleaned_query,
-                top_k=top_k,
-                total_results=chunk_resp.total_results,
-                search_type="semantic",
-                results=[
-                    SearchResultItem(
-                        id=c.id,
-                        document_id=c.document_id,
-                        chunk_index=c.chunk_index,
-                        content=c.content,
-                        metadata=c.metadata,
-                        similarity=c.similarity or 0.0,
-                        distance=c.distance or 0.0,
-                        embedding_model=c.embedding_model or "gemini-embedding-001",
-                    )
-                    for c in chunk_resp.results
-                ],
-            )
 
         # 1. Generate query embedding using Gemini
         query_vector = self.embedding_provider.embed_text(cleaned_query)
@@ -177,37 +150,13 @@ class SearchService:
         query: str,
         top_k: int = 5,
         filters: Optional[Dict[str, Any]] = None,
-        search_target: Optional[str] = None,
     ) -> KeywordSearchResponse:
         """
-        Execute full-text keyword search using PostgreSQL tsvector and websearch_to_tsquery.
-        Defaults to searching 'document_chunks' if chunks exist, otherwise falls back to 'documents'.
+        Execute full-text keyword search strictly over stored UNCHUNKED documents.
         """
         cleaned_query = query.strip()
         if not cleaned_query:
             raise ValueError("Search query cannot be empty.")
-
-        target_chunks = (search_target == "chunks") or (search_target != "documents" and self.has_chunks())
-
-        if target_chunks:
-            chunk_resp = self.chunk_keyword_search(query=cleaned_query, top_k=top_k, filters=filters)
-            return KeywordSearchResponse(
-                query=cleaned_query,
-                top_k=top_k,
-                total_results=chunk_resp.total_results,
-                search_type="keyword",
-                results=[
-                    KeywordSearchResultItem(
-                        id=c.id,
-                        document_id=c.document_id,
-                        chunk_index=c.chunk_index,
-                        content=c.content,
-                        metadata=c.metadata,
-                        rank=c.rank or 0.0,
-                    )
-                    for c in chunk_resp.results
-                ],
-            )
 
         result_items: List[KeywordSearchResultItem] = []
 
@@ -538,4 +487,81 @@ class SearchService:
             alpha=alpha,
             results=fused_items[:top_k],
         )
+
+    def chunk_search(
+        self,
+        query: str,
+        top_k: int = 5,
+        filters: Optional[Dict[str, Any]] = None,
+        strategy: str = "hybrid",
+        alpha: float = 0.5,
+        rrf_k: int = 60,
+        rerank: bool = False,
+    ) -> HybridSearchResponse:
+        """
+        Unified search method operating strictly on 'document_chunks'.
+        Supports 'hybrid' (vector + keyword RRF), 'vector', or 'keyword' strategies,
+        with optional cross-encoder reranking.
+        """
+        strat = strategy.lower().strip()
+        if strat == "vector":
+            v_resp = self.chunk_vector_search(query=query, top_k=top_k, filters=filters)
+            items = [
+                HybridChunkSearchResultItem(
+                    id=c.id,
+                    document_id=c.document_id,
+                    chunk_index=c.chunk_index,
+                    content=c.content,
+                    metadata=c.metadata,
+                    combined_score=c.similarity or 0.0,
+                    vector_similarity=c.similarity,
+                    matched_by="vector_only",
+                )
+                for c in v_resp.results
+            ]
+            resp = HybridSearchResponse(
+                query=query,
+                top_k=top_k,
+                total_results=len(items),
+                search_type="chunk_vector",
+                results=items,
+            )
+        elif strat == "keyword":
+            k_resp = self.chunk_keyword_search(query=query, top_k=top_k, filters=filters)
+            items = [
+                HybridChunkSearchResultItem(
+                    id=c.id,
+                    document_id=c.document_id,
+                    chunk_index=c.chunk_index,
+                    content=c.content,
+                    metadata=c.metadata,
+                    combined_score=c.rank or 0.0,
+                    keyword_score=c.rank,
+                    matched_by="keyword_only",
+                )
+                for c in k_resp.results
+            ]
+            resp = HybridSearchResponse(
+                query=query,
+                top_k=top_k,
+                total_results=len(items),
+                search_type="chunk_keyword",
+                results=items,
+            )
+        else:
+            resp = self.chunk_hybrid_search(
+                query=query,
+                top_k=top_k,
+                filters=filters,
+                alpha=alpha,
+                rrf_k=rrf_k,
+            )
+
+        if rerank and resp.results:
+            from app.services.reranking_service import RerankingService
+            reranker = RerankingService()
+            reranked = reranker.rerank(query=query, items=resp.results, top_k=top_k)
+            resp.results = reranked
+
+        return resp
 

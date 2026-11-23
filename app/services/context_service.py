@@ -115,29 +115,72 @@ class ContextEngineeringService:
         context_text = "\n\n".join(blocks)
         return context_text, manifest
 
+    DEFAULT_SYSTEM_PROMPT = (
+        "You are a helpful, strictly grounded AI support assistant.\n"
+        "Your instructions:\n"
+        "1. Answer the user's question using ONLY the provided context.\n"
+        "2. If the answer is not available in the context, say exactly: 'I don't know based on the provided context.'\n"
+        "3. Do NOT make assumptions, extrapolate, or use outside knowledge.\n"
+        "4. Cite the source(s) supporting each statement using bracketed references (e.g. [Source 1], [Source 2]).\n"
+        "5. Be concise, professional, and factual."
+    )
+
+    @classmethod
+    def resolve_system_prompt(
+        cls,
+        prompt_service: Optional[Any] = None,
+        category: str = "rag",
+        version: str = "v1",
+    ) -> str:
+        """
+        Dynamically fetch system prompt template from PostgreSQL prompts table,
+        falling back gracefully to the default grounded support prompt.
+        """
+        if prompt_service is not None:
+            try:
+                loaded = prompt_service.load_prompt(category, version)
+                if loaded and loaded.strip():
+                    return loaded.strip()
+            except Exception:
+                try:
+                    loaded = prompt_service.get_system_prompt(f"{category}/{version}")
+                    if loaded and loaded.strip():
+                        return loaded.strip()
+                except Exception:
+                    pass
+
+        try:
+            from app.services.prompt_service import default_prompt_service
+            loaded = default_prompt_service.load_prompt(category, version)
+            if loaded and loaded.strip():
+                return loaded.strip()
+        except Exception:
+            pass
+
+        return cls.DEFAULT_SYSTEM_PROMPT
+
     @classmethod
     def build_rag_prompt(
         cls,
         question: str,
         items: List[Any],
         max_context_chars: int = DEFAULT_MAX_CONTEXT_CHARS,
+        prompt_service: Optional[Any] = None,
+        prompt_category: str = "rag",
+        prompt_version: str = "v1",
     ) -> Tuple[str, str, List[Dict[str, Any]]]:
         """
         Assembles deduplicated, budget-trimmed, and source-labeled context
-        and produces the system prompt and user prompt.
+        and produces the system prompt (from PostgreSQL prompts table) and user prompt.
         """
         deduped = cls.deduplicate_chunks(items)
         trimmed = cls.trim_context(deduped, max_chars=max_context_chars)
         context_text, manifest = cls.assemble_labeled_context(trimmed)
 
-        system_prompt = (
-            "You are a helpful, strictly grounded AI support assistant.\n"
-            "Your instructions:\n"
-            "1. Answer the user's question using ONLY the provided context.\n"
-            "2. If the answer is not available in the context, say exactly: 'I don't know based on the provided context.'\n"
-            "3. Do NOT make assumptions, extrapolate, or use outside knowledge.\n"
-            "4. Cite the source(s) supporting each statement using bracketed references (e.g. [Source 1], [Source 2]).\n"
-            "5. Be concise, professional, and factual."
+        system_prompt = cls.resolve_system_prompt(
+            prompt_service=prompt_service,
+            category=prompt_category,
+            version=prompt_version,
         )
 
         user_prompt = (

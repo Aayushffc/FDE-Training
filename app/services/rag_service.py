@@ -32,11 +32,21 @@ class RAGService:
         reranking_service: Optional[RerankingService] = None,
         context_service: Optional[ContextEngineeringService] = None,
         registry: Optional[Any] = None,
+        prompt_service: Optional[Any] = None,
     ) -> None:
         self.db = db
         self.search_service = search_service or SearchService(db=db)
         self.reranker = reranking_service or RerankingService()
         self.context_service = context_service or ContextEngineeringService()
+        if prompt_service is not None:
+            self.prompt_service = prompt_service
+        else:
+            try:
+                from app.services.prompt_service import PromptService
+                self.prompt_service = PromptService(db=db)
+            except Exception:
+                self.prompt_service = None
+
         if registry is None:
             from app.infrastructure.llm_providers.registry import default_registry
             self.registry = default_registry
@@ -121,6 +131,9 @@ class RAGService:
         system_prompt, user_prompt, manifest = self.context_service.build_rag_prompt(
             question=payload.question,
             items=ordered_candidates,
+            prompt_service=self.prompt_service,
+            prompt_category=getattr(payload, "prompt_category", "rag"),
+            prompt_version=getattr(payload, "prompt_version", "v1"),
         )
 
         # 4. LLM Generation

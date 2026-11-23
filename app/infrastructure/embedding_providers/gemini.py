@@ -50,18 +50,26 @@ class GeminiEmbeddingProvider(BaseEmbeddingProvider):
             raise ValueError("Text content cannot be empty for embedding generation.")
 
         config = types.EmbedContentConfig(output_dimensionality=self._dimensions)
-        response = self.client.models.embed_content(
-            model=self._model,
-            contents=text.strip(),
-            config=config,
-        )
+        for attempt in range(4):
+            try:
+                response = self.client.models.embed_content(
+                    model=self._model,
+                    contents=text.strip(),
+                    config=config,
+                )
+                if not response.embeddings or not response.embeddings[0].values:
+                    raise RuntimeError(
+                        f"Gemini API returned an empty embedding response for model '{self._model}'."
+                    )
+                return list(response.embeddings[0].values)
+            except Exception as exc:
+                if "429" in str(exc) or "RESOURCE_EXHAUSTED" in str(exc):
+                    import time
+                    time.sleep(15 * (attempt + 1))
+                else:
+                    raise
 
-        if not response.embeddings or not response.embeddings[0].values:
-            raise RuntimeError(
-                f"Gemini API returned an empty embedding response for model '{self._model}'."
-            )
-
-        return list(response.embeddings[0].values)
+        raise RuntimeError("Exceeded maximum retries for Gemini embedding generation due to rate limiting.")
 
     def embed_batch(self, texts: List[str]) -> List[List[float]]:
         """
@@ -72,15 +80,23 @@ class GeminiEmbeddingProvider(BaseEmbeddingProvider):
 
         cleaned_texts = [t.strip() for t in texts]
         config = types.EmbedContentConfig(output_dimensionality=self._dimensions)
-        response = self.client.models.embed_content(
-            model=self._model,
-            contents=cleaned_texts,
-            config=config,
-        )
+        for attempt in range(4):
+            try:
+                response = self.client.models.embed_content(
+                    model=self._model,
+                    contents=cleaned_texts,
+                    config=config,
+                )
+                if not response.embeddings:
+                    raise RuntimeError(
+                        f"Gemini API returned no embeddings for batch of size {len(texts)}."
+                    )
+                return [list(emb.values) for emb in response.embeddings]
+            except Exception as exc:
+                if "429" in str(exc) or "RESOURCE_EXHAUSTED" in str(exc):
+                    import time
+                    time.sleep(15 * (attempt + 1))
+                else:
+                    raise
 
-        if not response.embeddings:
-            raise RuntimeError(
-                f"Gemini API returned no embeddings for batch of size {len(texts)}."
-            )
-
-        return [list(emb.values) for emb in response.embeddings]
+        raise RuntimeError("Exceeded maximum retries for Gemini batch embedding generation due to rate limiting.")

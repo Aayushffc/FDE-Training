@@ -3,11 +3,8 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.schemas.search import (
-    ChunkSearchResponse,
-    HybridSearchRequest,
+    ChunkedSearchRequest,
     HybridSearchResponse,
-    KeywordSearchRequest,
-    KeywordSearchResponse,
     SemanticSearchRequest,
     SemanticSearchResponse,
 )
@@ -25,20 +22,18 @@ def get_search_service(db: Session = Depends(get_db)) -> SearchService:
     "/semantic",
     response_model=SemanticSearchResponse,
     status_code=status.HTTP_200_OK,
-    summary="Execute semantic similarity search over stored vector documents",
+    summary="Execute semantic similarity search strictly over stored UNCHUNKED documents",
 )
 def semantic_search_endpoint(
     payload: SemanticSearchRequest,
     search_service: SearchService = Depends(get_search_service),
 ) -> SemanticSearchResponse:
     """
-    Execute semantic cosine similarity search over ingested vector documents.
-
-    Workflow:
+    Execute semantic cosine similarity search strictly over unchunked parent documents:
     1. Receives natural language search query and optional metadata filters (e.g., {'category': 'account'}).
     2. Embeds the query into a 768-dimensional vector via Google Gemini (gemini-embedding-001).
-    3. Performs cosine distance similarity search in Neon PostgreSQL using pgvector `<=>`.
-    4. Filters candidates by metadata and returns the top-K closest documents.
+    3. Performs cosine distance similarity search in Neon PostgreSQL using pgvector `<=>` against the 'documents' table.
+    4. Filters candidates by metadata and returns the top-K closest whole documents.
     """
     try:
         return search_service.semantic_search(
@@ -59,75 +54,32 @@ def semantic_search_endpoint(
 
 
 @router.post(
-    "/keyword",
-    response_model=KeywordSearchResponse,
-    status_code=status.HTTP_200_OK,
-    summary="Execute PostgreSQL full-text keyword search over stored documents",
-)
-def keyword_search_endpoint(
-    payload: KeywordSearchRequest,
-    search_service: SearchService = Depends(get_search_service),
-) -> KeywordSearchResponse:
-    """
-    Execute keyword search using PostgreSQL native full-text search.
-
-    Workflow:
-    1. Receives search query keywords and optional metadata filters (e.g., {'category': 'billing'}).
-    2. Constructs tsvector and websearch_to_tsquery against document content in PostgreSQL.
-    3. Matches using `@@` and ranks results using `ts_rank`.
-    4. Returns the top-K highest-ranking documents.
-    """
-    try:
-        return search_service.keyword_search(
-            query=payload.query,
-            top_k=payload.top_k,
-            filters=payload.filters,
-        )
-    except ValueError as val_err:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(val_err),
-        )
-    except Exception as exc:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Keyword search failed: {str(exc)}",
-        )
-
-
-@router.post(
-    "/hybrid",
+    "/chunked",
     response_model=HybridSearchResponse,
     status_code=status.HTTP_200_OK,
-    summary="Execute hybrid search (Keyword + Vector with Reciprocal Rank Fusion) over document chunks",
+    summary="Execute search strictly over stored DOCUMENT CHUNKS",
 )
-def hybrid_search_endpoint(
-    payload: HybridSearchRequest,
+def chunked_search_endpoint(
+    payload: ChunkedSearchRequest,
     search_service: SearchService = Depends(get_search_service),
 ) -> HybridSearchResponse:
     """
-    Execute hybrid search over document chunks:
-    1. Executes vector semantic search via Gemini embeddings & pgvector.
-    2. Executes PostgreSQL full-text keyword search via tsvector and ts_rank.
-    3. Merges and re-ranks results using Reciprocal Rank Fusion (RRF) or normalized weighted scoring.
-    4. Optionally applies cross-encoder reranking to refine relevance.
-    5. Returns ranked chunks along with vector/keyword rank citations and parent document IDs.
+    Execute search strictly over document chunks in the 'document_chunks' table:
+    1. Supports strategy: 'hybrid' (vector + keyword RRF, default), 'vector' (semantic only), or 'keyword' (FTS only).
+    2. When hybrid, merges candidates using Reciprocal Rank Fusion (RRF, k=60).
+    3. Optionally applies cross-encoder reranking to reorder candidates by token density & phrase proximity.
+    4. Returns ranked chunks with parent document references, citations, and scores.
     """
     try:
-        resp = search_service.chunk_hybrid_search(
+        return search_service.chunk_search(
             query=payload.query,
             top_k=payload.top_k,
             filters=payload.filters,
+            strategy=payload.strategy,
             alpha=payload.alpha,
             rrf_k=payload.rrf_k,
-            fusion_method=payload.fusion_method,
+            rerank=payload.rerank,
         )
-        if payload.rerank and resp.results:
-            from app.services.reranking_service import RerankingService
-            reranker = RerankingService()
-            reranked_results = reranker.rerank(query=payload.query, items=resp.results, top_k=payload.top_k)
-            resp.results = reranked_results
-        return resp
     except ValueError as val_err:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -136,7 +88,7 @@ def hybrid_search_endpoint(
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Hybrid search failed: {str(exc)}",
+            detail=f"Chunked search failed: {str(exc)}",
         )
 
 
