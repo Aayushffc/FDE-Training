@@ -84,7 +84,6 @@ def document_hybrid_search_endpoint(
             top_k=payload.top_k,
             filters=payload.filters,
             alpha=payload.alpha,
-            rrf_k=payload.rrf_k,
         )
     except ValueError as val_err:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(val_err))
@@ -164,7 +163,6 @@ def chunk_hybrid_search_endpoint(
             top_k=payload.top_k,
             filters=payload.filters,
             alpha=payload.alpha,
-            rrf_k=payload.rrf_k,
         )
         if payload.rerank and resp.results:
             resp.results = reranker.rerank(query=payload.query, items=resp.results, top_k=payload.top_k)
