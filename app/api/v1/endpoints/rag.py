@@ -1,16 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
 
-from app.db.session import get_db
+from app.api.v1.dependencies import get_rag_service
 from app.schemas.rag import RAGRequest, RAGResponse
 from app.services.rag_service import RAGService
 
 router = APIRouter(prefix="/rag", tags=["RAG & Answers"])
-
-
-def get_rag_service(db: Session = Depends(get_db)) -> RAGService:
-    """Dependency provider for RAGService."""
-    return RAGService(db=db)
 
 
 @router.post(
