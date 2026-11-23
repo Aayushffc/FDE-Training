@@ -1,8 +1,6 @@
 # Environment variables
-.env
 
 # IDE
-.vscode/
 .idea/
 
 # Python virtual environment
@@ -28,3 +26,5 @@ build/
 logs/
 *.log
 *.tmp
+config.bat
+node_modules
