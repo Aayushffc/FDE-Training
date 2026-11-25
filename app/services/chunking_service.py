@@ -1,9 +1,10 @@
-import re
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
 from app.infrastructure.text_processing import (
     clean_text as _clean_text,
+    hierarchical_chunk_split,
+    sliding_window_chunk_split,
     validate_chunk_params as _validate_chunk_params,
 )
 
@@ -68,112 +69,23 @@ class ChunkingService:
             ]
 
         if not preserve_boundaries:
-            # Strict character sliding window
-            chunks: List[ChunkItem] = []
-            step = chunk_size - chunk_overlap
-            for start in range(0, len(cleaned), step):
-                end = min(start + chunk_size, len(cleaned))
-                sub = cleaned[start:end].strip()
-                if sub:
-                    chunks.append(
-                        ChunkItem(
-                            chunk_index=len(chunks),
-                            content=sub,
-                            char_start=start,
-                            char_end=end,
-                            char_count=len(sub),
-                            word_count=len(sub.split()),
-                            metadata={},
-                        )
-                    )
-                if end >= len(cleaned):
-                    break
-            total = len(chunks)
-            for c in chunks:
-                c.metadata["total_chunks"] = total
+            raw_tuples = sliding_window_chunk_split(cleaned, chunk_size, chunk_overlap)
+            chunks = [
+                ChunkItem(
+                    chunk_index=i,
+                    content=sub,
+                    char_start=start,
+                    char_end=end,
+                    char_count=len(sub),
+                    word_count=len(sub.split()),
+                    metadata={"total_chunks": len(raw_tuples)},
+                )
+                for i, (sub, start, end) in enumerate(raw_tuples)
+            ]
             return chunks
 
-        # Boundary-preserving hierarchical split
-        separators = ["\n\n", "\n", ". ", "? ", "! ", " "]
-
-        def _split_text(txt: str, seps: List[str]) -> List[str]:
-            if not seps or len(txt) <= chunk_size:
-                if len(txt) <= chunk_size:
-                    return [txt]
-                # Fallback to character slicing
-                step = chunk_size - chunk_overlap
-                return [txt[i : i + chunk_size] for i in range(0, len(txt), step)]
-
-            sep = seps[0]
-            remaining_seps = seps[1:]
-
-            if sep in txt:
-                raw_parts = txt.split(sep)
-                parts: List[str] = []
-                for p in raw_parts:
-                    p_str = p.strip()
-                    if not p_str:
-                        continue
-                    if sep in [". ", "? ", "! "]:
-                        parts.append(p_str + sep.strip())
-                    else:
-                        parts.append(p_str)
-            else:
-                return _split_text(txt, remaining_seps)
-
-            good_parts: List[str] = []
-            for part in parts:
-                if len(part) <= chunk_size:
-                    good_parts.append(part)
-                else:
-                    good_parts.extend(_split_text(part, remaining_seps))
-            return good_parts
-
-        atomic_parts = _split_text(cleaned, separators)
-
-        # Merge atomic parts into chunks up to chunk_size with overlap
-        merged_chunks: List[str] = []
-        current_chunk: List[str] = []
-        current_len = 0
-
-        for part in atomic_parts:
-            added_len = len(part) + (1 if current_chunk else 0)
-            if current_len + added_len <= chunk_size:
-                current_chunk.append(part)
-                current_len += added_len
-            else:
-                if current_chunk:
-                    merged_chunks.append(" ".join(current_chunk).strip())
-                    # Overlap: keep parts from current_chunk from the end that fit in chunk_overlap
-                    overlap_parts: List[str] = []
-                    overlap_len = 0
-                    for prev in reversed(current_chunk):
-                        prev_add = len(prev) + (1 if overlap_parts else 0)
-                        if overlap_len + prev_add <= chunk_overlap:
-                            overlap_parts.insert(0, prev)
-                            overlap_len += prev_add
-                        else:
-                            break
-                    current_chunk = overlap_parts
-                    current_len = overlap_len
-
-                added_len = len(part) + (1 if current_chunk else 0)
-                if current_len + added_len <= chunk_size:
-                    current_chunk.append(part)
-                    current_len += added_len
-                else:
-                    if current_chunk:
-                        merged_chunks.append(" ".join(current_chunk).strip())
-                        current_chunk = []
-                        current_len = 0
-                    current_chunk.append(part)
-                    current_len = len(part)
-
-        if current_chunk:
-            final_text = " ".join(current_chunk).strip()
-            if not merged_chunks or final_text != merged_chunks[-1]:
-                merged_chunks.append(final_text)
-
+        # Hierarchical boundary preservation
+        merged_chunks = hierarchical_chunk_split(cleaned, chunk_size, chunk_overlap)
         chunks: List[ChunkItem] = []
         cursor = 0
         total = len(merged_chunks)

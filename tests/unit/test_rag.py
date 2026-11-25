@@ -6,6 +6,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app.core.exceptions import PromptNotFoundError
 from app.db.base import Base
 from app.db.session import get_db
 from app.infrastructure.llm_providers.base import BaseLLMProvider
@@ -13,10 +14,12 @@ from app.infrastructure.llm_providers.registry import LLMProviderRegistry
 from app.main import app
 from app.models.document import Document
 from app.models.document_chunk import DocumentChunk
+from app.models.prompt import PromptCategory, PromptVersion
 from app.modules.chat.schemas import ChatResponse
 from app.schemas.rag import RAGRequest
 from app.services.context_service import ContextEngineeringService
 from app.services.embedding_service import GeminiEmbeddingService
+from app.services.prompt_service import PromptService
 from app.services.rag_service import RAGService
 from app.services.reranking_service import RerankingService
 from app.services.search_service import SearchService
@@ -77,6 +80,38 @@ def rag_test_db():
         embedding_model="gemini-embedding-001",
     )
     session.add_all([c1, c2, c3])
+    session.flush()
+
+    # Seed RAG prompts in test database
+    cat = PromptCategory(name="rag", description="RAG grounding prompts")
+    session.add(cat)
+    session.flush()
+
+    grounding_prompt_text = (
+        "You are a helpful, strictly grounded AI support assistant.\n"
+        "Your instructions:\n"
+        "1. Answer the user's question using ONLY the provided context.\n"
+        "2. Even if the context does not contain a complete formal definition or exhaustive guide, synthesize and explain everything the context specifies regarding the entities, terms, processes, or capabilities mentioned in the user's prompt (e.g. how it is integrated, configured, or used).\n"
+        "3. If the context contains NO relevant or related information whatsoever regarding the user's question, say exactly: 'I don't know based on the provided context.'\n"
+        "4. Do NOT make assumptions, extrapolate, or introduce external knowledge not grounded in the context.\n"
+        "5. Cite the supporting source(s) for each factual statement using bracketed references (e.g. [Source 1], [Source 2]).\n"
+        "6. Be concise, professional, and factual."
+    )
+    pv1 = PromptVersion(
+        category_id=cat.id,
+        version="v1",
+        name="RAG Grounding Prompt (v1)",
+        prompt_text=grounding_prompt_text,
+        is_active=True,
+    )
+    pv_default = PromptVersion(
+        category_id=cat.id,
+        version="default",
+        name="RAG Grounding Prompt (default)",
+        prompt_text=grounding_prompt_text,
+        is_active=True,
+    )
+    session.add_all([pv1, pv_default])
     session.commit()
 
     try:
@@ -215,8 +250,9 @@ class TestContextEngineeringService:
         trimmed = ctx_service.trim_context(items, max_chars=700)
         assert len(trimmed) == 1 or len(trimmed) == 2
 
-    def test_build_rag_prompt_contains_strict_instructions(self):
+    def test_build_rag_prompt_contains_strict_instructions(self, rag_test_db):
         ctx_service = ContextEngineeringService()
+        prompt_service = PromptService(db=rag_test_db)
 
         class DummyChunk:
             def __init__(self, id_val, doc_id, index, content):
@@ -230,11 +266,27 @@ class TestContextEngineeringService:
             DummyChunk("c2", "d1", 1, "Second chunk content."),
         ]
 
-        sys_prompt, user_prompt, manifest = ctx_service.build_rag_prompt("How to login?", chunks)
+        sys_prompt, user_prompt, manifest = ctx_service.build_rag_prompt(
+            "How to login?", chunks, prompt_service=prompt_service
+        )
         assert "I don't know based on the provided context" in sys_prompt
         assert "[Source 1]" in user_prompt
         assert "[Source 2]" in user_prompt
         assert len(manifest) == 2
+
+    def test_resolve_system_prompt_raises_prompt_not_found_when_missing(self, rag_test_db):
+        ctx_service = ContextEngineeringService()
+        prompt_service = PromptService(db=rag_test_db)
+
+        with pytest.raises(PromptNotFoundError) as exc_info:
+            ctx_service.resolve_system_prompt(
+                prompt_service=prompt_service,
+                category="nonexistent_category",
+                version="v99",
+            )
+        assert exc_info.value.status_code == 404
+        assert exc_info.value.category == "nonexistent_category"
+        assert exc_info.value.version == "v99"
 
 
 class TestRAGServiceAndEndpoints:
@@ -315,3 +367,24 @@ class TestRAGServiceAndEndpoints:
             assert "sources" in data
             assert data["retrieval_strategy"] == "hybrid"
             assert data["reranked"] is True
+
+    def test_post_rag_ask_endpoint_missing_prompt_returns_404(
+        self, rag_client, mock_embedder
+    ):
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(
+                "app.services.search_service.get_embedding_provider",
+                lambda: mock_embedder,
+            )
+            resp = rag_client.post(
+                "/v1/rag/ask",
+                json={
+                    "question": "How do I reset my password?",
+                    "prompt_category": "nonexistent_category",
+                    "prompt_version": "v99",
+                },
+            )
+            assert resp.status_code == 404
+            data = resp.json()
+            assert data.get("error") == "prompt_not_found"
+            assert "not found in the database" in data.get("detail", "")

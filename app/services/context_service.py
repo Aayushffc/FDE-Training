@@ -1,5 +1,7 @@
 from typing import Any, Dict, List, Optional, Tuple
 
+from app.core.exceptions import PromptNotFoundError
+
 
 class ContextEngineeringService:
     """
@@ -115,16 +117,6 @@ class ContextEngineeringService:
         context_text = "\n\n".join(blocks)
         return context_text, manifest
 
-    DEFAULT_SYSTEM_PROMPT = (
-        "You are a helpful, strictly grounded AI support assistant.\n"
-        "Your instructions:\n"
-        "1. Answer the user's question using ONLY the provided context.\n"
-        "2. If the answer is not available in the context, say exactly: 'I don't know based on the provided context.'\n"
-        "3. Do NOT make assumptions, extrapolate, or use outside knowledge.\n"
-        "4. Cite the source(s) supporting each statement using bracketed references (e.g. [Source 1], [Source 2]).\n"
-        "5. Be concise, professional, and factual."
-    )
-
     @classmethod
     def resolve_system_prompt(
         cls,
@@ -133,8 +125,8 @@ class ContextEngineeringService:
         version: str = "v1",
     ) -> str:
         """
-        Dynamically fetch system prompt template from PostgreSQL prompts table,
-        falling back gracefully to the default grounded support prompt.
+        Dynamically fetch system prompt template strictly from PostgreSQL prompts table.
+        Raises PromptNotFoundError if the requested category/version does not exist.
         """
         if prompt_service is not None:
             try:
@@ -157,7 +149,14 @@ class ContextEngineeringService:
         except Exception:
             pass
 
-        return cls.DEFAULT_SYSTEM_PROMPT
+        raise PromptNotFoundError(
+            category=category,
+            version=version,
+            message=(
+                f"System prompt '{category}/{version}' not found in the database. "
+                "Ensure prompts have been seeded into PostgreSQL via scripts/seed_prompts.py."
+            ),
+        )
 
     @classmethod
     def build_rag_prompt(
