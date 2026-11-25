@@ -52,36 +52,6 @@ def test_all() -> None:
     _run_pytest(["-o", "addopts=-v"])
 
 
-def run_experiments() -> None:
-    """Run the customer support prompt engineering experiments (30 benchmark runs)."""
-    import runpy
-
-    script_path = Path("scripts") / "run_prompt_experiments.py"
-    if not script_path.exists():
-        script_path = Path(__file__).resolve().parent.parent / "scripts" / "run_prompt_experiments.py"
-    runpy.run_path(str(script_path), run_name="__main__")
-
-
-def analyze_experiments() -> None:
-    """Analyze and display prompt engineering benchmark metrics."""
-    import runpy
-
-    script_path = Path("scripts") / "analyze_results.py"
-    if not script_path.exists():
-        script_path = Path(__file__).resolve().parent.parent / "scripts" / "analyze_results.py"
-    runpy.run_path(str(script_path), run_name="__main__")
-
-
-def stream_demo() -> None:
-    """Run the live Server-Sent Events (SSE) token streaming demonstration."""
-    import runpy
-
-    script_path = Path("scripts") / "demonstrate_streaming.py"
-    if not script_path.exists():
-        script_path = Path(__file__).resolve().parent.parent / "scripts" / "demonstrate_streaming.py"
-    runpy.run_path(str(script_path), run_name="__main__")
-
-
 def stream_client() -> None:
     """Run the live terminal HTTP streaming client against /v1/chat/stream."""
     import runpy
@@ -92,44 +62,31 @@ def stream_client() -> None:
     runpy.run_path(str(script_path), run_name="__main__")
 
 
-def tool_demo() -> None:
-    """Run the live LLM tool/function calling demonstration."""
-    import runpy
-
-    script_path = Path("scripts") / "demonstrate_tool_calling.py"
-    if not script_path.exists():
-        script_path = Path(__file__).resolve().parent.parent / "scripts" / "demonstrate_tool_calling.py"
-    runpy.run_path(str(script_path), run_name="__main__")
-
-
 def seed_chunks_cli() -> None:
-    """Seed documents and document_chunks into PostgreSQL with Gemini 768-dim embeddings."""
+    """Seed documents and document_chunks from data/chunk_data.json into PostgreSQL."""
     import runpy
 
-    script_path = Path("scripts") / "seed_chunks.py"
+    script_path = Path("scripts") / "seed_chunk_data.py"
     if not script_path.exists():
-        script_path = Path(__file__).resolve().parent.parent / "scripts" / "seed_chunks.py"
+        script_path = Path(__file__).resolve().parent.parent / "scripts" / "seed_chunk_data.py"
     runpy.run_path(str(script_path), run_name="__main__")
 
 
-def chunk_experiment_cli() -> None:
-    """Run chunk size and overlap comparison experiments across 3 configurations."""
+def seed_documents_cli() -> None:
+    """Seed sample whole documents into PostgreSQL."""
     import runpy
 
-    script_path = Path("scripts") / "experiment_chunking.py"
+    script_path = Path("scripts") / "seed_documents.py"
     if not script_path.exists():
-        script_path = Path(__file__).resolve().parent.parent / "scripts" / "experiment_chunking.py"
+        script_path = Path(__file__).resolve().parent.parent / "scripts" / "seed_documents.py"
     runpy.run_path(str(script_path), run_name="__main__")
 
 
-def compare_chunks_cli() -> None:
-    """Execute benchmark comparison of Keyword vs Vector vs Hybrid retrieval over chunks."""
+def seed_prompts_cli() -> None:
+    """Seed prompt categories and prompt versions into PostgreSQL."""
     import runpy
 
-    script_path = Path("scripts") / "compare_chunk_searches.py"
+    script_path = Path("scripts") / "seed_prompts.py"
     if not script_path.exists():
-        script_path = Path(__file__).resolve().parent.parent / "scripts" / "compare_chunk_searches.py"
+        script_path = Path(__file__).resolve().parent.parent / "scripts" / "seed_prompts.py"
     runpy.run_path(str(script_path), run_name="__main__")
-
-
-
