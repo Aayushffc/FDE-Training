@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.v1.dependencies import get_rag_service
+from app.core.exceptions import AppBaseException
 from app.schemas.rag import RAGRequest, RAGResponse
 from app.services.rag_service import RAGService
 
@@ -27,6 +28,8 @@ async def ask_rag_endpoint(
     """
     try:
         return await rag_service.generate_rag_answer(payload)
+    except AppBaseException:
+        raise
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -45,6 +45,16 @@ class RAGRequest(BaseModel):
         description="LLM provider for answer synthesis: 'groq', 'openai', or 'anthropic'",
         examples=["groq"],
     )
+    prompt_category: Optional[str] = Field(
+        default="rag",
+        description="Database prompt category to retrieve system prompt template from",
+        examples=["rag"],
+    )
+    prompt_version: Optional[str] = Field(
+        default="v1",
+        description="Version identifier of prompt template to retrieve from database",
+        examples=["v1"],
+    )
 
     model_config = ConfigDict(extra="ignore")
 

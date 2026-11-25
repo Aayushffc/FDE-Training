@@ -128,6 +128,20 @@ class StructuredOutputValidationError(AppBaseException):
         )
 
 
+class PromptNotFoundError(AppBaseException):
+    """Raised when a requested prompt category or version is not found in the database."""
+
+    def __init__(self, category: str, version: str, message: str | None = None):
+        msg = message or f"System prompt '{category}/{version}' not found in the database. Ensure database is seeded."
+        super().__init__(
+            message=msg,
+            status_code=404,
+            error_code="prompt_not_found",
+        )
+        self.category = category
+        self.version = version
+
+
 async def app_exception_handler(request: Request, exc: AppBaseException) -> JSONResponse:
     return JSONResponse(
         status_code=exc.status_code,

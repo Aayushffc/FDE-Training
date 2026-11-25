@@ -9,16 +9,31 @@ class HeuristicReranker(BaseReranker):
     """
     High-performance zero-dependency cross-scoring reranker.
     Evaluates:
-    1. Query Term Coverage (40% weight)
+    1. Content-Word Query Term Coverage (40% weight) with stopword filtering
     2. Contiguous Phrase & N-gram bonus (15-35% weight)
     3. Token Proximity & Density (5-15% weight)
-    4. First-stage retrieval prior (30% weight)
+    4. First-stage retrieval prior (30% weight) including RRF combined scores
     """
 
-    @staticmethod
-    def _extract_keywords(text: str) -> List[str]:
-        """Extract normalized alphanumeric tokens with length > 1."""
-        return [w.lower() for w in re.findall(r"\b\w+\b", text) if len(w) > 1]
+    COMMON_STOPWORDS = {
+        "a", "an", "and", "are", "as", "at", "be", "by", "for", "from",
+        "has", "he", "in", "is", "it", "its", "of", "on", "that", "the",
+        "to", "was", "were", "will", "with", "i", "you", "we", "they",
+        "my", "your", "our", "their", "this", "these", "those", "how",
+        "much", "many", "what", "which", "who", "whom", "where", "when",
+        "why", "can", "could", "would", "should", "do", "does", "did",
+        "get", "got", "have", "had", "me", "him", "her", "us", "them",
+    }
+
+    @classmethod
+    def _extract_keywords(cls, text: str, filter_stopwords: bool = True) -> List[str]:
+        """Extract normalized alphanumeric tokens with length > 1, optionally filtering stopwords."""
+        words = [w.lower() for w in re.findall(r"\b\w+\b", text) if len(w) > 1]
+        if filter_stopwords:
+            content_words = [w for w in words if w not in cls.COMMON_STOPWORDS]
+            if content_words:
+                return content_words
+        return words
 
     def compute_relevance_score(
         self,
@@ -27,12 +42,12 @@ class HeuristicReranker(BaseReranker):
         base_similarity: Optional[float] = None,
         base_rank: Optional[float] = None,
     ) -> float:
-        query_words = self._extract_keywords(query)
+        query_words = self._extract_keywords(query, filter_stopwords=True)
         if not query_words:
             return 0.0
 
         chunk_lower = chunk_content.lower()
-        chunk_words = self._extract_keywords(chunk_content)
+        chunk_words = self._extract_keywords(chunk_content, filter_stopwords=False)
         if not chunk_words:
             return 0.0
 
@@ -75,7 +90,6 @@ class HeuristicReranker(BaseReranker):
         if base_similarity is not None and base_similarity > 0.0:
             prior_score = min(1.0, base_similarity) * 0.30
         elif base_rank is not None and base_rank > 0.0:
-            # Saturate ts_rank into [0, 0.30]
             prior_score = (1.0 - math.exp(-base_rank * 2.0)) * 0.30
 
         # Combined Cross-Score
@@ -95,15 +109,23 @@ class HeuristicReranker(BaseReranker):
 
         for item in items:
             content = getattr(item, "content", "") if hasattr(item, "content") else (item.get("content", "") if isinstance(item, dict) else "")
+            
             base_sim = getattr(item, "similarity", None)
             if base_sim is None:
                 base_sim = getattr(item, "vector_similarity", None)
+            if base_sim is None:
+                # Check for hybrid search combined RRF score
+                comb = getattr(item, "combined_score", None) or (item.get("combined_score") if isinstance(item, dict) else None)
+                if comb is not None and comb > 0:
+                    base_sim = min(1.0, comb * 30.0)
             if base_sim is None and isinstance(item, dict):
                 base_sim = item.get("similarity") or item.get("vector_similarity")
 
             base_rank = getattr(item, "rank", None)
             if base_rank is None:
                 base_rank = getattr(item, "keyword_score", None)
+            if base_rank is None:
+                base_rank = getattr(item, "keyword_rank", None)
             if base_rank is None and isinstance(item, dict):
                 base_rank = item.get("rank") or item.get("keyword_score")
 

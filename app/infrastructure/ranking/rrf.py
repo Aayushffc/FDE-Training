@@ -88,3 +88,68 @@ def fuse_rankings(
         })
 
     return results
+
+
+def fuse_weighted_scores(
+    vector_results: List[Any],
+    keyword_results: List[Any],
+    id_getter: Any = lambda x: getattr(x, "id", None) or x.get("id"),
+    alpha: float = 0.5,
+) -> List[Dict[str, Any]]:
+    """
+    Fuses a vector candidate list and keyword candidate list using normalized convex combination:
+    combined_score = alpha * vector_similarity + (1 - alpha) * (keyword_rank / max_keyword_rank)
+    """
+    items_by_id: Dict[str, Any] = {}
+    v_sims: Dict[str, float] = {}
+    v_ranks: Dict[str, int] = {}
+    k_scores: Dict[str, float] = {}
+    k_ranks: Dict[str, int] = {}
+
+    for rank, item in enumerate(vector_results, start=1):
+        item_id = str(id_getter(item))
+        items_by_id[item_id] = item
+        v_ranks[item_id] = rank
+        sim_val = getattr(item, "similarity", None)
+        v_sims[item_id] = float(sim_val) if sim_val is not None else 0.0
+
+    max_kw = 1.0
+    for rank, item in enumerate(keyword_results, start=1):
+        item_id = str(id_getter(item))
+        if item_id not in items_by_id:
+            items_by_id[item_id] = item
+        k_ranks[item_id] = rank
+        kw_val = float(getattr(item, "rank", 0.0) or 0.0)
+        k_scores[item_id] = kw_val
+        if kw_val > max_kw:
+            max_kw = kw_val
+
+    results = []
+    for item_id, item in items_by_id.items():
+        v_sim = v_sims.get(item_id, 0.0)
+        k_sc = k_scores.get(item_id, 0.0)
+        norm_k = k_sc / max_kw if max_kw > 0.0 else 0.0
+        combined = (alpha * v_sim) + ((1.0 - alpha) * norm_k)
+
+        v_r = v_ranks.get(item_id)
+        k_r = k_ranks.get(item_id)
+        if v_r is not None and k_r is not None:
+            matched_by = "both"
+        elif v_r is not None:
+            matched_by = "vector_only"
+        else:
+            matched_by = "keyword_only"
+
+        results.append({
+            "id": item_id,
+            "item": item,
+            "combined_score": round(combined, 6),
+            "vector_rank": v_r,
+            "keyword_rank": k_r,
+            "vector_similarity": v_sim if v_r is not None else None,
+            "keyword_score": k_sc if k_r is not None else None,
+            "matched_by": matched_by,
+        })
+
+    results.sort(key=lambda x: x["combined_score"], reverse=True)
+    return results
