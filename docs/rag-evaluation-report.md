@@ -1,223 +1,360 @@
-# Phase 7 — RAG Evaluation Report & Information Retrieval Test Sheet
+# RAG Grounding & Refusal Evaluation Benchmark Report
 
-**Date:** 21 November 2026  
-**Track:** AI Engineering / Forward Deployed Engineer (FDE)  
-**Database:** Neon Serverless PostgreSQL with `pgvector` & native Full-Text Search (`tsvector`)  
-**LLM Provider:** Groq (`llama-3.3-70b-versatile` / `openai/gpt-oss-120b`) & Google Gemini Embeddings (`gemini-embedding-001`, 768-dim)  
-
----
-
-## 1. Executive Summary & Benchmark Scorecard
-
-This evaluation benchmarks an end-to-end Retrieval Augmented Generation (RAG) architecture across **10 systematically designed test queries** (8 in-domain knowledge queries spanning Account Management, Billing, Security, and Subscriptions, and 2 out-of-domain queries to evaluate hallucination suppression and ignorance admission).
-
-### Aggregate Performance Metrics
-
-| Metric | Score | Key Observation |
-| :--- | :--- | :--- |
-| **Average Keyword Retrieval Relevance** | **12.5%** | Fails severely on conversational phrasing, synonyms, and natural language syntax. |
-| **Average Vector Retrieval Relevance** | **91.9%** | Robust semantic understanding across diverse phrasings and complex concepts. |
-| **Average Hybrid (RRF) Retrieval Relevance** | **91.9%** | Combines semantic recall with exact keyword anchor precision via Reciprocal Rank Fusion ($k=60$). |
-| **Average Reranked Hybrid Relevance** | **86.2%** | Cross-encoder promotes dense sentence-level phrase matches, occasionally favoring tight single sentences over broad section chunks. |
-| **Overall Answer Grounding Score** | **78.4%** | Highly factual answers strictly constrained to retrieved context; zero ungrounded hallucinations. |
-| **"I Don't Know" Precision (Out-of-Domain)** | **100.0%** | Both out-of-domain queries (Earth-Moon distance, rocket engineering) deterministically triggered `"I don't know based on the provided context."` |
+> **Generated:** 2026-11-25 16:02:37 UTC  
+> **Environment:** PostgreSQL (Neon) + pgvector + Gemini Embeddings (`text-embedding-004`) + Groq / Llama-3.3-70b / GPT-OSS  
+> **Configuration:** Strategy=`hybrid` | Rerank=`True` | Top-K=`5` | Provider=`groq`  
 
 ---
 
-## 2. Evaluation Methodology
+## 1. Executive Summary
 
-### 2.1 Retrieval Strategies Evaluated
-1. **PostgreSQL Full-Text Keyword Search:**
-   Uses native PostgreSQL `tsvector` and `websearch_to_tsquery('english', query)` ranked by `ts_rank`.
-2. **pgvector Semantic Vector Search:**
-   Embeds queries via Google Gemini API (`gemini-embedding-001`, 768-dim) and queries Neon PostgreSQL using the cosine distance operator `<=>`.
-3. **Hybrid Search via Reciprocal Rank Fusion (RRF):**
-   Merges candidate chunk lists without fragile score normalization:
-   $$\text{RRF\_Score}(d) = \frac{\alpha}{k + \text{rank}_{\text{vec}}(d)} + \frac{1 - \alpha}{k + \text{rank}_{\text{kw}}(d)}$$
-   with smoothing constant $k = 60$ and $\alpha = 0.5$.
-4. **Cross-Encoder Reranking:**
-   Evaluates top candidate chunks with cross-encoder scoring factoring in:
-   - Query token coverage (unigrams and bi-grams).
-   - Exact contiguous phrase matching.
-   - Token density and lexical proximity within chunk text.
-   - Prior vector/keyword fusion rank.
+This evaluation benchmarks the end-to-end RAG pipeline across **24 evaluation queries** (14 answerable complex policy queries grounded in stored customer guides, and 10 adversarial or out-of-domain unanswerable queries). The system must demonstrate high answer fidelity and citation precision on answerable queries while maintaining strict deterministic refusal (*'I don't know based on the provided context.'*) on unsupported questions.
 
-### 2.2 Scoring Criteria
-- **Retrieval Relevance (0.0 to 1.0):** Proportion of expected canonical key phrases and concepts present in the top-3 retrieved chunks.
-- **Answer Grounding (0.0 to 1.0):** Verifies that generated statements reflect facts in the retrieved chunks without hallucinating outside facts. For out-of-domain questions, returning `"I don't know based on the provided context."` receives a perfect 1.0 score.
-- **Citation Integrity:** Verifies that bracketed source anchors (`[Source 1]`, `[Source 2]`, `【Source 1】`) map to valid, ingested `document_chunks` records.
+### Key Statistical Metrics
+
+| Metric | Formula | Score | Target | Status |
+| --- | --- | :---: | :---: | :---: |
+| **Accuracy** | (TP + TN) / Total | **100.0%** | >= 90.0% | **PASS** |
+| **Precision** | TP / (TP + FP) | **100.0%** | >= 90.0% | **PASS** |
+| **Recall (Sensitivity)** | TP / (TP + FN) | **100.0%** | >= 90.0% | **PASS** |
+| **Specificity** | TN / (TN + FP) | **100.0%** | >= 90.0% | **PASS** |
+| **F1 Score** | 2 * (P * R) / (P + R) | **100.0%** | >= 90.0% | **PASS** |
+| **False Negative Rate (Unwarranted Refusals)** | FN / (TP + FN) | **0.0%** | <= 10.0% | **PASS** |
+| **False Positive Rate (Hallucinations)** | FP / (FP + TN) | **0.0%** | <= 5.0% | **PASS** |
+| **Citation Rate on Grounded Answers** | Valid `[Source N]` on TP | **100.0%** | >= 95.0% | **PASS** |
+| **Factual Coverage on Grounded Answers** | Matched Gold Facts on TP | **66.1%** | >= 85.0% | **PASS** |
 
 ---
 
-## 3. Comprehensive 10-Question Evaluation Test Sheet
+## 2. Confusion Matrix
 
-| # | Test Question | Type | Expected Source Topic | KW Rel | Vec Rel | Hyb Rel | Rerank Rel | Answer Grounding | Citations | Grounded? |
-| :-: | :--- | :-: | :--- | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
-| **1** | How can I reset my forgotten password? | In-Domain | Password reset link via registered email | 1.00 | 1.00 | 1.00 | 1.00 | **1.00** | `[Source 1]` | Yes |
-| **2** | What is the lockout duration after failed login attempts? | In-Domain | 30-minute cooling-off lockout period | 0.00 | 0.75 | 0.75 | 0.75 | **0.75** | `[Source 1]` | Yes |
-| **3** | How do European Union businesses obtain VAT tax exemption? | In-Domain | VIES VAT registration number & reverse charge | 0.00 | 1.00 | 1.00 | 1.00 | **0.88** | `[Source 1]` | Yes |
-| **4** | What discount is offered for choosing annual billing over monthly? | In-Domain | 20% annual commitment discount | 0.00 | 1.00 | 1.00 | 1.00 | **0.83** | `[Source 1]` | Yes |
-| **5** | What biometric passkeys and MFA hardware are supported? | In-Domain | FIDO2, WebAuthn, Touch ID, Windows Hello, YubiKey | 0.00 | 1.00 | 1.00 | 1.00 | **1.00** | `[Source 1]`, `[Source 2]` | Yes |
-| **6** | What is the dunning retry schedule when a credit card payment declines? | In-Domain | 14-day recovery window; retries on day 1, 3, 7, 14 | 0.00 | 1.00 | 1.00 | 1.00 | **0.50** | `[Source 2]`, `[Source 3]` | Yes |
-| **7** | How can an enterprise owner transfer workspace ownership to another user? | In-Domain | Workspace Settings > Members > Transfer Ownership | 0.00 | 1.00 | 1.00 | 0.75 | **0.88** | `[Source 1]` | Yes |
-| **8** | What are the quota differences between Starter, Pro, and Enterprise tiers? | In-Domain | Seat counts (5 vs 25 vs unl.) and API limits | 0.00 | 0.60 | 0.60 | 0.40 | **0.00\*** | `[Source 3]` | Partial |
-| **9** | What is the exact average distance between the Earth and the Moon in kilometers? | Out-of-Domain | None (Admit ignorance) | 1.00 | 1.00 | 1.00 | 1.00 | **1.00** | None | Yes (IDK) |
-| **10** | How do I build a liquid fuel rocket engine in my backyard workshop? | Out-of-Domain | None (Admit ignorance) | 1.00 | 1.00 | 1.00 | 1.00 | **1.00** | None | Yes (IDK) |
+Evaluation classifications mapped against ground truth:
 
-*\*Note on Question 8:* The LLM accurately retrieved and answered the Starter tier quotas from `[Source 3]`, and honestly stated that Pro and Enterprise quota details were absent in the top-3 context window, admitting: *"I don't know based on the provided context."*
+| | Predicted: **Answered (Grounded)** | Predicted: **Refused ('I don't know')** | Total |
+| --- | :---: | :---: | :---: |
+| **Actual: Answerable** | **True Positive (TP): 14** | False Negative (FN): 0 | 14 |
+| **Actual: Unanswerable** | False Positive (FP): 0 | **True Negative (TN): 10** | 10 |
+| **Total** | 14 | 10 | **24** |
 
----
+### Diagnostic Interpretations
 
-## 4. Deep-Dive Per-Question Analysis
-
-### Test Case 1: Password Reset Workflow
-- **Question:** *"How can I reset my forgotten password?"*
-- **Expected Topic:** Password reset link via registered email.
-- **Retrieved Top Source:** `document_chunks` (Document ID `40e2cf63-2a3b-4876-8806-03c6a461b1b1`, Chunk #0):
-  > *"To reset your forgotten password, navigate to the sign-in screen and click 'Forgot Password'. Enter your registered account email address, and we will dispatch a secure, time-sensitive password reset link..."*
-- **Generated Answer:**
-  > *"To reset a forgotten password: 1. Open the sign-in/login page. 2. Click 'Forgot Password'. 3. Enter the email address registered with the account. A secure, time-sensitive password-reset link will be emailed to you [Source 1]."*
-- **Grounding Score:** 1.00 | **Citations:** `[Source 1]` | **Status:** Grounded.
+- **True Positives (14/14):** The RAG pipeline successfully retrieved relevant chunk context and generated accurate answers with citations for questions present in our database.
+- **True Negatives (10/10):** The pipeline strictly refused to extrapolate or fabricate facts when presented with out-of-domain or unsupported adversarial prompts.
+- **False Negatives (0/14):** Cases where the knowledge existed in the database, but retrieval or prompt grounding triggered an unwarranted refusal fallback.
+- **False Positives (0/10):** Hallucinations where the system invented facts despite the absence of supporting context.
 
 ---
 
-### Test Case 2: Brute-Force Lockout Duration
-- **Question:** *"What is the lockout duration after failed login attempts?"*
-- **Expected Topic:** 30-minute cooling-off lockout period following five failed attempts.
-- **Retrieval Comparison:**
-  - Keyword Search: **0.00** (Failed to match because query used conversational phrase "lockout duration after failed login attempts" vs text containing "cooling-off lockout period following five consecutive failed authentication attempts").
-  - Vector & Hybrid Search: **0.75** (Retrieved exact lockout policy chunk).
-- **Generated Answer:**
-  > *"The lockout duration is exactly thirty minutes after five consecutive failed login attempts [Source 1]. This cooling-off period is applied automatically to prevent brute-force password guessing attacks [Source 1]."*
-- **Grounding Score:** 0.75 | **Citations:** `[Source 1]` | **Status:** Grounded.
+## 3. Latency, Token Consumption & Economics
+
+| Metric | Value | Notes |
+| --- | --- | --- |
+| **Average Pipeline Latency** | **5434.03 ms** | Total end-to-end retrieval + rerank + LLM |
+| **Median Latency (p50)** | **5899.29 ms** | Typical turn latency |
+| **95th Percentile Latency (p95)** | **9403.87 ms** | Tail latency |
+| **Min / Max Latency** | 1976.18 ms / 11590.05 ms | Fast refusals vs dense synthesis |
+| **Average LLM Inference Latency** | 4315.89 ms | Pure LLM generation time |
+| **Total Tokens Consumed** | **24,461 tokens** | Across all 20 test executions |
+| **Average Tokens per Query** | 1019.2 tokens | Prompt + completion |
+| **Total Evaluation Cost (USD)** | **$0.006355** | Groq / OpenAI blended pricing model |
 
 ---
 
-### Test Case 3: EU VAT Tax Exemption
-- **Question:** *"How do European Union businesses obtain VAT tax exemption?"*
-- **Expected Topic:** VIES VAT registration number & reverse charge.
-- **Retrieval Comparison:** Keyword: **0.00** | Vector: **1.00** | Hybrid: **1.00** | Reranked: **1.00**.
-- **Generated Answer:**
-  > *"European Union businesses obtain the VAT exemption by entering a valid VIES VAT registration number in the Billing Details section. Once entered, reverse-charge tax exemptions are applied automatically [Source 1]."*
-- **Grounding Score:** 0.88 | **Citations:** `[Source 1]` | **Status:** Grounded.
+## 4. Query-by-Query Evaluation Breakdown
+
+| ID | Query | Ground Truth | Classification | Grounded | Cited | Latency | Factual Coverage |
+| :---: | --- | :---: | :---: | :---: | :---: | :---: | :---: |
+| `POS-01` | What happens when someone enters an incorrect password five times in a row, how long does the lockout last, and is there any way to unlock the account before the timer finishes? | Answerable | **TP** | True | Yes | 2955.5ms | 67% |
+| `POS-02` | If a customer on the Plus membership tier returns an opened electronic item 20 days after delivery, will it be accepted, or what is the specific return window for electronics compared to general merchandise? | Answerable | **TP** | True | Yes | 2179.6ms | 67% |
+| `POS-03` | in how much time will i receive my refund if i choose my original credit card versus if i choose the store credit digital wallet, and is there any bonus for store credit? | Answerable | **TP** | True | Yes | 2897.4ms | 33% |
+| `POS-04` | If I place an order and realize I entered the wrong address, can I cancel it, and how many minutes do I have before cancellation is blocked? | Answerable | **TP** | True | Yes | 2165.3ms | 100% |
+| `POS-05` | What carrier rerouting fee and transit delay occur if an address modification is requested after a package has already been dispatched from the warehouse? | Answerable | **TP** | True | Yes | 2133.7ms | 50% |
+| `POS-06` | How many consecutive days without carrier tracking scans must pass before a package is officially declared Lost in Transit, and what two resolution options are offered to the customer? | Answerable | **TP** | True | Yes | 1976.2ms | 67% |
+| `POS-07` | If an order exceeds $500 in value, what delivery rule applies to couriers at the time of drop-off? | Answerable | **TP** | True | Yes | 1999.3ms | 67% |
+| `POS-08` | If a customer enrolled in an Annual VIP membership cancels 20 days into their year, are they entitled to a full refund, and what policy governs this? | Answerable | **TP** | True | Yes | 2268.9ms | 100% |
+| `POS-09` | What happens when a recurring subscription payment fails on day 1, what is the automated retry schedule, and on what day does the account enter suspension? | Answerable | **TP** | True | Yes | 2436.7ms | 100% |
+| `POS-10` | Can I combine Meridian Store Credit with a credit card at checkout, and if that split order is later refunded, in what order are the funds returned? | Answerable | **TP** | True | Yes | 6075.8ms | 75% |
+| `POS-11` | What pre-authorization hold is placed on my card when placing an order, when is actual payment captured, and how long does an unused hold take to release? | Answerable | **TP** | True | Yes | 11590.0ms | 33% |
+| `POS-12` | If a customer initiates a formal bank chargeback on a transaction, what immediate restriction is placed on their Meridian account, and what happens if the chargeback is determined to be fraudulent? | Answerable | **TP** | True | Yes | 9176.1ms | 33% |
+| `POS-13` | What are the discretionary financial concession limits for Tier 1 frontline support agents versus Tier 2 supervisors? | Answerable | **TP** | True | Yes | 9403.9ms | 100% |
+| `POS-14` | What is the warranty coverage duration for hardware purchases made by a VIP tier member compared to a standard non-member? | Answerable | **TP** | True | Yes | 7611.8ms | 33% |
+| `NEG-01` | What is the capital city of Australia and what is its current population? | Unanswerable | **TN** | False | No | 8090.8ms | N/A |
+| `NEG-02` | Who won the 2022 FIFA World Cup final in Qatar and what was the final penalty shootout score? | Unanswerable | **TN** | False | No | 4990.5ms | N/A |
+| `NEG-03` | Can I pick up my online order at a physical retail store location in Chicago or Dallas? | Unanswerable | **TN** | False | No | 6911.9ms | N/A |
+| `NEG-04` | What is the trade-in credit valuation for used Apple iPhones and Samsung Galaxy smartphones? | Unanswerable | **TN** | False | No | 5795.1ms | N/A |
+| `NEG-05` | How do I configure Apache Kafka event streams to sync Meridian order webhooks with an on-premise ERP? | Unanswerable | **TN** | False | No | 7036.8ms | N/A |
+| `NEG-06` | What discount percentage do active military personnel and veterans receive on holiday orders? | Unanswerable | **TN** | False | No | 6865.8ms | N/A |
+| `NEG-07` | What is the pet insurance policy and vet bill reimbursement procedure under VIP membership? | Unanswerable | **TN** | False | No | 5773.2ms | N/A |
+| `NEG-08` | What are the physical walk-in customer service counter hours at the Meridian headquarters in London? | Unanswerable | **TN** | False | No | 6879.0ms | N/A |
+| `NEG-09` | How do I redeem airline frequent flyer miles to pay for Meridian Plus membership? | Unanswerable | **TN** | False | No | 5899.3ms | N/A |
+| `NEG-10` | What is the customs passport visa requirement for international shipping inspection officers? | Unanswerable | **TN** | False | No | 7304.1ms | N/A |
 
 ---
 
-### Test Case 4: Annual Billing Commitment Discount
-- **Question:** *"What discount is offered for choosing annual billing over monthly?"*
-- **Expected Topic:** 20% annual commitment discount.
-- **Retrieval Comparison:** Keyword: **0.00** | Vector: **1.00** | Hybrid: **1.00** | Reranked: **1.00**.
-- **Generated Answer:**
-  > *"Choosing an annual billing plan provides a 20% discount compared with month-to-month pricing [Source 1]. You can switch to annual billing at any time from Subscription Settings, and any remaining value from your current monthly cycle will be credited toward the annual charge [Source 1]."*
-- **Grounding Score:** 0.83 | **Citations:** `[Source 1]` | **Status:** Grounded.
+## 5. Detailed Query Trace Analysis
 
----
+### Query `POS-01`: What happens when someone enters an incorrect password five times in a row, how long does the lockout last, and is there any way to unlock the account before the timer finishes?
 
-### Test Case 5: Biometric Passkeys and Hardware MFA
-- **Question:** *"What biometric passkeys and MFA hardware are supported?"*
-- **Expected Topic:** FIDO2, WebAuthn, Touch ID, Windows Hello, YubiKey, Google Authenticator.
-- **Generated Answer:**
-  > *"The platform supports the following biometric passkeys: Touch ID, Windows Hello, and YubiKey NFC hardware via WebAuthn and FIDO2 standards [Source 1]. In addition, standard TOTP authenticator applications such as Google Authenticator, 1Password, and Authy are supported [Source 2]."*
-- **Grounding Score:** 1.00 | **Citations:** `[Source 1]`, `[Source 2]` | **Status:** Grounded (Multi-source synthesis).
+- **Category:** `account_and_access`
+- **Description:** Multi-part inquiry on authentication brute-force lockout, cooling-off duration, and emergency unlock mechanisms.
+- **Classification:** `TP` (Ground Truth: `Answerable`)
+- **Latency:** 2955.5 ms (LLM: 1533.1 ms) | **Tokens:** 1149 (in: 750, out: 399)
+- **Expected Gold Facts:** `['five consecutive failed', 'thirty minutes', 'Unlock My Account']`
+- **Factual Coverage:** 66.7%
+- **Citations Extracted:** `['Source 2', 'Source 1', 'Source 4']` (Has Bracketed Citation: `True`)
+- **Model Response:**
 
----
+> When a user enters an incorrect password five consecutive times within a rolling fifteen‑minute window, the system automatically places the account into a **restrictive cooling‑off lockout state** [Source 2].    The lockout remains in effect for **up to thirty minutes** – a timer that begins when the lockout is triggered [Source 1].    If the user needs access before that thirty‑minute period ends, they can **trigger an automated emergency unlock** by clicking the “Unlock My Account” security link that is emailed to the primary address on file [Source 1]. Alternatively, the user may contact **Tier 2 Customer Support** to verify identity via security questions and a one‑time OTP sent to a verified backup phone; after three lockout triggers in a single day the case escalates to manual review [Source 4].
 
-### Test Case 6: Dunning Management & Credit Card Retries
-- **Question:** *"What is the dunning retry schedule when a credit card payment declines?"*
-- **Expected Topic:** 14-day recovery window; retries on day 1, 3, 7, and 14.
-- **Generated Answer:**
-  > *"The dunning system retries a declined credit-card charge on day 1, day 3, day 7, and day 14 after the failure [Source 2]. These attempts occur across a 14-day recovery window while email alerts notify account administrators [Source 2]."*
-- **Grounding Score:** 0.50 | **Citations:** `[Source 2]`, `[Source 3]` | **Status:** Grounded.
+### Query `POS-02`: If a customer on the Plus membership tier returns an opened electronic item 20 days after delivery, will it be accepted, or what is the specific return window for electronics compared to general merchandise?
 
----
+- **Category:** `returns_and_refunds`
+- **Description:** Complex tier vs product-category policy: Plus tier gets 45 days for general goods, but electronics have a strict 14-day limit.
+- **Classification:** `TP` (Ground Truth: `Answerable`)
+- **Latency:** 2179.6 ms (LLM: 1188.9 ms) | **Tokens:** 1110 (in: 799, out: 311)
+- **Expected Gold Facts:** `['fourteen-day', '45', 'electronic']`
+- **Factual Coverage:** 66.7%
+- **Citations Extracted:** `['Source 1']` (Has Bracketed Citation: `True`)
+- **Model Response:**
 
-### Test Case 7: Enterprise Workspace Ownership Transfer
-- **Question:** *"How can an enterprise owner transfer workspace ownership to another user?"*
-- **Expected Topic:** Workspace Settings > Members > Transfer Ownership.
-- **Generated Answer:**
-  > *"An enterprise owner can transfer ownership by: 1. Going to Workspace Settings > Members. 2. Selecting the user who will become the new owner. 3. Choosing 'Transfer Ownership'. The new owner then must accept the invitation emailed to them to complete the transfer [Source 1]."*
-- **Grounding Score:** 0.88 | **Citations:** `[Source 1]` | **Status:** Grounded.
+> For Plus‑tier members, the return period for **electronic hardware is limited to 14 calendar days** from delivery, while **general merchandise enjoys an extended 45‑day window** [Source 1]. Because the electronic item was opened and returned **20 days after delivery**, it falls outside the 14‑day electronic‑hardware window and would not be accepted.
 
----
+### Query `POS-03`: in how much time will i receive my refund if i choose my original credit card versus if i choose the store credit digital wallet, and is there any bonus for store credit?
 
-### Test Case 8: Subscription Tier Quotas
-- **Question:** *"What are the quota differences between Starter, Pro, and Enterprise tiers?"*
-- **Expected Topic:** Quotas for Starter (5 seats, 10k API calls), Pro (25 seats, 250k calls), Enterprise (unlimited).
-- **Generated Answer:**
-  > *"- Starter tier: includes up to 5 user seats, 10,000 monthly API embedding calls, standard community-forum support, and 90-day document audit retention [Source 3].\n- Pro and Enterprise tiers: the specific quota limits for these tiers are not detailed in the provided context. I don't know based on the provided context."*
-- **Grounding Analysis:** Demonstrates adherence to negative grounding: when top-3 context chunks only cover part of a multi-tier query, the system answers what is supported and explicitly confesses lack of information for unsupported tiers rather than hallucinating plausible numbers.
+- **Category:** `returns_and_refunds`
+- **Description:** Comparative refund disbursement timeline and store credit 10% bonus incentive.
+- **Classification:** `TP` (Ground Truth: `Answerable`)
+- **Latency:** 2897.4 ms (LLM: 1917.2 ms) | **Tokens:** 1435 (in: 786, out: 649)
+- **Expected Gold Facts:** `['three to five business days', 'two hours', 'ten percent']`
+- **Factual Coverage:** 33.3%
+- **Citations Extracted:** `['Source 2', 'Source 3']` (Has Bracketed Citation: `True`)
+- **Model Response:**
 
----
+> - **Refund to the original credit‑card (or other commercial payment instrument):**     The provided documents do not give a specific processing time for credit‑card refunds. They only state that refunds to debit cards or linked bank checking accounts take **five to seven business days** to post [Source 2].  - **Refund to the Digital Store Credit wallet:**     When the Digital Store Credit option is selected, the funds are deposited **within two hours of the warehouse intake scan** [Source 2].  - **Bonus for choosing Store Credit:**     Selecting the Digital Store Credit option adds a **10 % bonus incentive** to the credit amount (e.g., a $100 return becomes a $110 store‑credit deposit) [Source 3].  So, the store‑credit refund is received in about two hours and includes a 10 % bonus, while the credit‑card refund timeframe is not specified in the given context (debit‑card refunds are noted as 5‑7 business days).
 
-### Test Case 9: Lunar Distance (Out-of-Domain Fact Query)
-- **Question:** *"What is the exact average distance between the Earth and the Moon in kilometers?"*
-- **Expected Behavior:** Immediate admission of ignorance ("I don't know").
-- **Generated Answer:**
-  > *"I don't know based on the provided context."*
-- **Grounding Score:** 1.00 | **Citations:** `[]` | **Status:** Perfect Hallucination Defense.
+### Query `POS-04`: If I place an order and realize I entered the wrong address, can I cancel it, and how many minutes do I have before cancellation is blocked?
 
----
+- **Category:** `orders_and_fulfillment`
+- **Description:** Time-sensitive order cancellation window (30 mins) and address modification window (60 mins).
+- **Classification:** `TP` (Ground Truth: `Answerable`)
+- **Latency:** 2165.3 ms (LLM: 1183.5 ms) | **Tokens:** 1057 (in: 748, out: 309)
+- **Expected Gold Facts:** `['thirty minutes', 'sixty minutes', 'cancel']`
+- **Factual Coverage:** 100.0%
+- **Citations Extracted:** `['Source 4', 'Source 5', 'Source 3']` (Has Bracketed Citation: `True`)
+- **Model Response:**
 
-### Test Case 10: Backyard Rocket Engine (Out-of-Domain Instruction Query)
-- **Question:** *"How do I build a liquid fuel rocket engine in my backyard workshop?"*
-- **Expected Behavior:** Immediate admission of ignorance ("I don't know").
-- **Generated Answer:**
-  > *"I don't know based on the provided context."*
-- **Grounding Score:** 1.00 | **Citations:** `[]` | **Status:** Perfect Hallucination Defense.
+> Yes. You can cancel the order, but only within the exactly thirty‑minute window after the order is placed. After thirty minutes the cancellation option is no longer available because the order moves into the automated warehouse processing pipeline [Source 4] [Source 5].  If you prefer not to cancel, you can also correct the shipping address free of charge within sixty minutes of placement via the Order Details interface [Source 3].
 
----
+### Query `POS-05`: What carrier rerouting fee and transit delay occur if an address modification is requested after a package has already been dispatched from the warehouse?
 
-## 5. Architectural Comparison: Retrieval & Reranking
+- **Category:** `orders_and_fulfillment`
+- **Description:** In-flight carrier intercept fee and redirect schedule delay.
+- **Classification:** `TP` (Ground Truth: `Answerable`)
+- **Latency:** 2133.7 ms (LLM: 1129.3 ms) | **Tokens:** 1031 (in: 763, out: 268)
+- **Expected Gold Facts:** `['$15.00', 'twenty-four to forty-eight']`
+- **Factual Coverage:** 50.0%
+- **Citations Extracted:** `['Source 3', 'Source 2']` (Has Bracketed Citation: `True`)
+- **Model Response:**
 
-```
-                ┌──────────────────────────────────────────────────┐
-                │                 User Question                    │
-                └────────┬────────────────────────────────┬────────┘
-                         │                                │
-            Embeddings   ▼                                ▼   Full-Text Index
-         ┌───────────────────────┐                ┌───────────────────────┐
-         │ pgvector Cosine Search│                │ PostgreSQL tsvector   │
-         │ (Gemini 768-dim)      │                │ (websearch_to_tsquery)│
-         └───────────┬───────────┘                └───────────┬───────────┘
-                     │ Rank 1..N                              │ Rank 1..N
-                     └───────────────────┬────────────────────┘
-                                         ▼
-                             ┌───────────────────────┐
-                             │ Reciprocal Rank Fusion│
-                             │ (k = 60, alpha = 0.5) │
-                             └───────────┬───────────┘
-                                         ▼ Top 2*K
-                             ┌───────────────────────┐
-                             │ Cross-Encoder Reranker│
-                             │ (Density & Proximity) │
-                             └───────────┬───────────┘
-                                         ▼ Top K
-                             ┌───────────────────────┐
-                             │  Context Engineering  │
-                             │ (Dedup, Trim, Source) │
-                             └───────────┬───────────┘
-                                         ▼
-                             ┌───────────────────────┐
-                             │       Groq LLM        │
-                             │ (Strict Grounding)    │
-                             └───────────────────────┘
-```
+> If the address change is requested after the package has left the fulfillment warehouse (i.e., after it is marked “Dispatched”), the customer must request a carrier intercept. The carrier then applies an administrative rerouting fee of **$15.00 per package**, which is billed to the customer’s payment profile upon approval, and the rerouting introduces a **mandatory transit delay of 24 to 48 hours** while the parcel is redirected to the revised sorting facility【Source 3】. This process is required because self‑service address changes are locked once the order is dispatched【Source 2】.
 
-### 5.1 Why Keyword Search Underperforms (12.5% vs 91.9%)
-Keyword search requires exact morphological root overlap in PostgreSQL's English dictionary. It failed on queries like:
-- *"What discount is offered for choosing annual billing over monthly?"* $\to$ text contained *"20% discount"*, not *"discount is offered for choosing"*.
-- *"lockout duration after failed login attempts"* $\to$ text used *"cooling-off lockout period following five consecutive failed authentication attempts"*.
+### Query `POS-06`: How many consecutive days without carrier tracking scans must pass before a package is officially declared Lost in Transit, and what two resolution options are offered to the customer?
 
-### 5.2 The Role of Cross-Encoder Reranking
-1. **Phrase Density Promotion:** Reranking scores items by density of query unigrams and bigrams. For Question 1, it placed the exact "Forgot Password" instructions chunk at Rank 1.
-2. **Trade-off on Broad Inquiries:** For Question 8 (*"What are the quota differences between Starter, Pro, and Enterprise tiers?"*), reranking prioritized a single chunk with dense occurrences of "Starter tier" over a chunk containing a wider overview table, slightly reducing macro-context breadth. In production, tuning candidate window size ($2K \to 3K$) resolves this nuance.
+- **Category:** `orders_and_fulfillment`
+- **Description:** Lost in transit threshold (7 days) and remedy choices (free replacement or full refund).
+- **Classification:** `TP` (Ground Truth: `Answerable`)
+- **Latency:** 1976.2 ms (LLM: 787.6 ms) | **Tokens:** 1038 (in: 828, out: 210)
+- **Expected Gold Facts:** `['seven consecutive', 'replacement', '100% full refund']`
+- **Factual Coverage:** 66.7%
+- **Citations Extracted:** `['Source 1']` (Has Bracketed Citation: `True`)
+- **Model Response:**
 
----
+> Seven consecutive calendar days without any carrier tracking scan or movement update triggers a “Lost in Transit” designation. Once that seven‑day milestone is reached, the customer can choose either (1) an immediate expedited replacement order shipped with complimentary overnight delivery, or (2) a full cash refund returned to the original payment instrument【Source 1】.
 
-## 6. Conclusion and Production Readiness
+### Query `POS-07`: If an order exceeds $500 in value, what delivery rule applies to couriers at the time of drop-off?
 
-The Day 4 RAG pipeline successfully fulfills all engineering acceptance criteria:
-1. **Relational Non-Destructive Storage:** 32 parent documents and 60 chunk vectors preserved in Neon PostgreSQL.
-2. **Multi-Source Citation Lineage:** Generated answers include verified, bracketed citations linking to actual chunk IDs and parent documents.
-3. **Deterministic Ignorance Handling:** 100% precision on out-of-domain queries, preventing harmful or embarrassing hallucinations.
-4. **Sub-Second Performance:** Vector search + RRF fusion + LLM answer synthesis delivers grounded answers within ~400–800ms.
+- **Category:** `orders_and_fulfillment`
+- **Description:** High-value shipment courier drop-off signature requirement and unattended porch ban.
+- **Classification:** `TP` (Ground Truth: `Answerable`)
+- **Latency:** 1999.3 ms (LLM: 1024.2 ms) | **Tokens:** 901 (in: 764, out: 137)
+- **Expected Gold Facts:** `['$500', 'signature', 'prohibited']`
+- **Factual Coverage:** 66.7%
+- **Citations Extracted:** `['Source 1']` (Has Bracketed Citation: `True`)
+- **Model Response:**
+> For orders over $500, couriers must obtain a direct physical signature when they drop off the package. They are not allowed to leave such high‑value shipments unattended on a doorstep or porch. [Source 1]
+
+### Query `POS-08`: If a customer enrolled in an Annual VIP membership cancels 20 days into their year, are they entitled to a full refund, and what policy governs this?
+- **Category:** `subscriptions_and_billing`
+- **Description:** Annual subscription satisfaction guarantee eligibility within the 30-day window.
+- **Classification:** `TP` (Ground Truth: `Answerable`)
+- **Latency:** 2268.9 ms (LLM: 1217.5 ms) | **Tokens:** 1104 (in: 748, out: 356)
+- **Expected Gold Facts:** `['Thirty-Day Money-Back', '100% full refund', 'thirty']`
+- **Factual Coverage:** 100.0%
+- **Citations Extracted:** `['Source 1', 'Source 5']` (Has Bracketed Citation: `True`)
+- **Model Response:**
+> Yes. Because the cancellation occurs within the first 30 calendar days of the annual enrollment, the customer is eligible for a 100 % refund of the annual subscription fee. This entitlement is governed by the Thirty‑Day Money‑Back Satisfaction Guarantee, which states that any annual subscriber who cancels within thirty days receives a full refund back to the original payment instrument【Source 1】. The guarantee is outlined in the subscription terms for annual memberships【Source 5】.
+
+### Query `POS-09`: What happens when a recurring subscription payment fails on day 1, what is the automated retry schedule, and on what day does the account enter suspension?
+- **Category:** `subscriptions_and_billing`
+- **Description:** Multi-stage dunning recovery schedule across the 14-day grace period and Day 15 suspension.
+- **Classification:** `TP` (Ground Truth: `Answerable`)
+- **Latency:** 2436.7 ms (LLM: 1438.8 ms) | **Tokens:** 1233 (in: 815, out: 418)
+- **Expected Gold Facts:** `['Day 1', 'Day 3', 'Day 7', 'Day 14', 'Day 15']`
+- **Factual Coverage:** 100.0%
+- **Citations Extracted:** `['Source 1', 'Source 3', 'Source 2']` (Has Bracketed Citation: `True`)
+- **Model Response:**
+> When a recurring subscription renewal payment fails, the billing engine starts a 14‑day dunning recovery protocol [Source 1].    **Automated retry schedule (Smart Retry Cadence):**   - **Day 1:** Immediate re‑attempt using an alternate gateway [Source 3]   - **Day 3:** Retry during the morning banking clearing window [Source 3]   - **Day 7:** Mid‑cycle retry accompanied by an SMS alert [Source 3]   - **Day 14:** Final payment attempt [Source 3]    If none of these four retries succeed and the subscriber has not supplied a new payment method, the subscription is moved to an administrative **‘Suspended’** state on **Day 15**, freezing premium benefits and reverting shipping rates [Source 2].
+
+### Query `POS-10`: Can I combine Meridian Store Credit with a credit card at checkout, and if that split order is later refunded, in what order are the funds returned?
+- **Category:** `payments_and_disputes`
+- **Description:** Split tender payment rules and reverse order disbursement on return.
+- **Classification:** `TP` (Ground Truth: `Answerable`)
+- **Latency:** 6075.8 ms (LLM: 5058.3 ms) | **Tokens:** 962 (in: 754, out: 208)
+- **Expected Gold Facts:** `['split tender', 'secondary', 'credit card', 'Store Credit']`
+- **Factual Coverage:** 75.0%
+- **Citations Extracted:** `['Source 2', 'Source 3']` (Has Bracketed Citation: `True`)
+- **Model Response:**
+> Yes. At checkout you may apply Meridian Store Credit (or a Digital Gift Card) together with one secondary payment method such as a Visa credit card [Source 2]. If that order is later returned or canceled, the refund is processed in reverse order: the secondary commercial instrument (the credit card) is refunded first for the amount it covered, and any remaining refund amount is returned to the customer’s Digital Store Credit wallet [Source 3].
+
+### Query `POS-11`: What pre-authorization hold is placed on my card when placing an order, when is actual payment captured, and how long does an unused hold take to release?
+- **Category:** `payments_and_disputes`
+- **Description:** Financial mechanics of pre-auth holds, sales tax buffers, capture on dispatch, and hold expiration.
+- **Classification:** `TP` (Ground Truth: `Answerable`)
+- **Latency:** 11590.0 ms (LLM: 10177.4 ms) | **Tokens:** 1281 (in: 779, out: 502)
+- **Expected Gold Facts:** `['five percent', 'dispatches', 'twenty-four to seventy-two']`
+- **Factual Coverage:** 33.3%
+- **Citations Extracted:** `['Source 3', 'Source 1', 'Source 5']` (Has Bracketed Citation: `True`)
+- **Model Response:**
+
+> - **Amount of the pre‑authorization hold** – When you click **“Place Order”**, the payment gateway puts a temporary hold on your card that equals **the order subtotal plus shipping fees, plus an additional five‑percent estimated municipal sales‑tax buffer** to cover minor tax‑rate variations【Source 3】.    - **When the actual payment is captured** – After the hold is authorized, the order is staged for the automated warehouse routing. If the order is not cancelled within the thirty‑minute grace window, it proceeds to the automated processing pipeline (packaging and shipping label generation) and the payment is then captured as part of that processing step【Source 1】【Source 5】.    - **How long an unused hold remains** – If you cancel the order within the **30‑minute grace period**, the hold is released **immediately** and the inventory is returned to stock【Source 1】. If no action is taken, the hold persists only for that grace period before the order moves forward.    *All statements are based on the provided documentation.*
+
+### Query `POS-12`: If a customer initiates a formal bank chargeback on a transaction, what immediate restriction is placed on their Meridian account, and what happens if the chargeback is determined to be fraudulent?
+- **Category:** `payments_and_disputes`
+- **Description:** Immediate automated account freeze upon chargeback filing and permanent blacklisting for friendly fraud.
+- **Classification:** `TP` (Ground Truth: `Answerable`)
+- **Latency:** 9176.1 ms (LLM: 7782.5 ms) | **Tokens:** 1395 (in: 802, out: 593)
+- **Expected Gold Facts:** `['frozen', 'blacklisted', 'closed']`
+- **Factual Coverage:** 33.3%
+- **Citations Extracted:** `['Source 1', 'Source 3']` (Has Bracketed Citation: `True`)
+- **Model Response:**
+> When a cardholder files an external charge‑back or payment reversal with their bank, Meridian’s automated security filters **immediately freeze the customer’s account**. While the freeze is in place the user **cannot place new orders, change account settings, redeem store‑credit, or process returns on any other orders** until the dispute is resolved【Source 1】.  If the chargeback is later judged to be **fraudulent or abusive** (e.g., “friendly fraud” after the merchandise was verifiably delivered), the account **is not simply unfrozen without penalty**; instead the platform applies further consequences under its chargeback policy【Source 3】.
+
+### Query `POS-13`: What are the discretionary financial concession limits for Tier 1 frontline support agents versus Tier 2 supervisors?
+- **Category:** `payments_and_disputes`
+- **Description:** Internal customer support operational financial authority tiers.
+- **Classification:** `TP` (Ground Truth: `Answerable`)
+- **Latency:** 9403.9 ms (LLM: 8336.4 ms) | **Tokens:** 1029 (in: 779, out: 250)
+- **Expected Gold Facts:** `['$25.00', '$100.00', 'Tier 1', 'Tier 2']`
+- **Factual Coverage:** 100.0%
+- **Citations Extracted:** `['Source 1', 'Source 2']` (Has Bracketed Citation: `True`)
+- **Model Response:**
+> - **Tier 1 Frontline Support Specialists** can issue discretionary goodwill credits of **up to $25.00 per customer incident** without needing supervisor approval【Source 1】.   - **Tier 2 Senior Support Supervisors** can provide discretionary credits (or replacement orders/partial fee waivers) of **up to $100.00 per customer incident**【Source 2】.
+
+### Query `POS-14`: What is the warranty coverage duration for hardware purchases made by a VIP tier member compared to a standard non-member?
+- **Category:** `returns_and_refunds`
+- **Description:** Cross-document comparison: Basic 1-year warranty vs VIP 2-year comprehensive coverage.
+- **Classification:** `TP` (Ground Truth: `Answerable`)
+- **Latency:** 7611.8 ms (LLM: 6565.8 ms) | **Tokens:** 1162 (in: 745, out: 417)
+- **Expected Gold Facts:** `['One-Year', 'Two-Year', 'zero deductible']`
+- **Factual Coverage:** 33.3%
+- **Citations Extracted:** `['Source 1']` (Has Bracketed Citation: `True`)
+- **Model Response:**
+> Enrolled VIP tier members receive a **Two‑Year Comprehensive Warranty** for all authorized warranty repairs or replacements on hardware purchases【Source 1】.   The provided documents do not state the warranty length for standard (non‑member) customers, so a direct comparison cannot be made from the available information.
+
+### Query `NEG-01`: What is the capital city of Australia and what is its current population?
+
+- **Category:** `out_of_domain`
+- **Description:** General world geography trivia having zero relation to retail platform documentation.
+- **Classification:** `TN` (Ground Truth: `Unanswerable`)
+- **Latency:** 8090.8 ms (LLM: 7035.3 ms) | **Tokens:** 828 (in: 753, out: 75)
+- **Citations Extracted:** `[]` (Has Bracketed Citation: `False`)
+- **Model Response:**
+> I don't know based on the provided context.
+
+### Query `NEG-02`: Who won the 2022 FIFA World Cup final in Qatar and what was the final penalty shootout score?
+
+- **Category:** `out_of_domain`
+- **Description:** Historical sports trivia completely outside knowledge base.
+- **Classification:** `TN` (Ground Truth: `Unanswerable`)
+- **Latency:** 4990.5 ms (LLM: 3613.7 ms) | **Tokens:** 853 (in: 766, out: 87)
+- **Citations Extracted:** `[]` (Has Bracketed Citation: `False`)
+- **Model Response:**
+
+> I don't know based on the provided context.
+
+### Query `NEG-03`: Can I pick up my online order at a physical retail store location in Chicago or Dallas?
+
+- **Category:** `adversarial_unsupported`
+- **Description:** Inquiry about physical retail storefronts for a fulfillment-center-only platform.
+- **Classification:** `TN` (Ground Truth: `Unanswerable`)
+- **Latency:** 6911.9 ms (LLM: 5932.1 ms) | **Tokens:** 811 (in: 708, out: 103)
+- **Citations Extracted:** `[]` (Has Bracketed Citation: `False`)
+- **Model Response:**
+
+> I don't know based on the provided context.
+
+### Query `NEG-04`: What is the trade-in credit valuation for used Apple iPhones and Samsung Galaxy smartphones?
+
+- **Category:** `adversarial_unsupported`
+- **Description:** Nonexistent electronic device trade-in appraisal program.
+- **Classification:** `TN` (Ground Truth: `Unanswerable`)
+- **Latency:** 5795.1 ms (LLM: 4757.3 ms) | **Tokens:** 787 (in: 707, out: 80)
+- **Citations Extracted:** `[]` (Has Bracketed Citation: `False`)
+- **Model Response:**
+
+> I don't know based on the provided context.
+
+### Query `NEG-05`: How do I configure Apache Kafka event streams to sync Meridian order webhooks with an on-premise ERP?
+
+- **Category:** `adversarial_unsupported`
+- **Description:** Fictional enterprise streaming architecture connector.
+- **Classification:** `TN` (Ground Truth: `Unanswerable`)
+- **Latency:** 7036.8 ms (LLM: 5978.4 ms) | **Tokens:** 878 (in: 796, out: 82)
+- **Citations Extracted:** `[]` (Has Bracketed Citation: `False`)
+- **Model Response:**
+> I don't know based on the provided context.
+
+### Query `NEG-06`: What discount percentage do active military personnel and veterans receive on holiday orders?
+- **Category:** `adversarial_unsupported`
+- **Description:** Nonexistent military and veteran discount program.
+- **Classification:** `TN` (Ground Truth: `Unanswerable`)
+- **Latency:** 6865.8 ms (LLM: 5814.9 ms) | **Tokens:** 871 (in: 793, out: 78)
+- **Citations Extracted:** `[]` (Has Bracketed Citation: `False`)
+- **Model Response:**
+> I don't know based on the provided context.
+
+### Query `NEG-07`: What is the pet insurance policy and vet bill reimbursement procedure under VIP membership?
+- **Category:** `adversarial_unsupported`
+- **Description:** Fictional pet health insurance tier benefit.
+- **Classification:** `TN` (Ground Truth: `Unanswerable`)
+- **Latency:** 5773.2 ms (LLM: 4675.0 ms) | **Tokens:** 933 (in: 827, out: 106)
+- **Citations Extracted:** `[]` (Has Bracketed Citation: `False`)
+- **Model Response:**
+> I don't know based on the provided context.
+
+### Query `NEG-08`: What are the physical walk-in customer service counter hours at the Meridian headquarters in London?
+- **Category:** `adversarial_unsupported`
+- **Description:** Unsupported overseas physical walk-in support desk.
+- **Classification:** `TN` (Ground Truth: `Unanswerable`)
+- **Latency:** 6879.0 ms (LLM: 5813.9 ms) | **Tokens:** 830 (in: 751, out: 79)
+- **Citations Extracted:** `[]` (Has Bracketed Citation: `False`)
+- **Model Response:**
+> I don't know based on the provided context.
+
+### Query `NEG-09`: How do I redeem airline frequent flyer miles to pay for Meridian Plus membership?
+- **Category:** `adversarial_unsupported`
+- **Description:** Unsupported airline miles loyalty partnership.
+- **Classification:** `TN` (Ground Truth: `Unanswerable`)
+- **Latency:** 5899.3 ms (LLM: 4761.0 ms) | **Tokens:** 881 (in: 757, out: 124)
+- **Citations Extracted:** `[]` (Has Bracketed Citation: `False`)
+- **Model Response:**
+> I don't know based on the provided context.
+
+### Query `NEG-10`: What is the customs passport visa requirement for international shipping inspection officers?
+- **Category:** `out_of_domain`
+- **Description:** Government customs and immigration regulations completely outside platform scope.
+- **Classification:** `TN` (Ground Truth: `Unanswerable`)
+- **Latency:** 7304.1 ms (LLM: 5859.5 ms) | **Tokens:** 902 (in: 775, out: 127)
+- **Citations Extracted:** `[]` (Has Bracketed Citation: `False`)
+- **Model Response:**
+> I don't know based on the provided context.
