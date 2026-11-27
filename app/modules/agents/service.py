@@ -1,117 +1,78 @@
-import json
+import logging
 from time import perf_counter
 from typing import Any
-from groq import AsyncGroq
-from openai import AsyncOpenAI
+from groq import APIError as GroqAPIError, AsyncGroq
+from openai import APIError as OpenAIAPIError, AsyncOpenAI
 
 from app.core.config import settings
 from app.core.exceptions import LLMProviderError
 from app.core.logging import log_llm_call
 from app.infrastructure.llm_providers.registry import LLMProviderRegistry, default_registry
+from app.modules.agents.adapters.retrieval_adapter import RetrievalAdapter
+from app.modules.agents.config import AgentConfig, default_agent_config
+from app.modules.agents.graph import run_agent_graph
+from app.modules.agents.nodes import LLMCaller, normalize_openai_chat_completion
 from app.modules.agents.schemas import AgentChatRequest, AgentChatResponse, ToolCallRecord
-from app.modules.agents.tools import AVAILABLE_TOOLS, dispatch_tool_call
+from app.modules.agents.state import AgentState
 from app.modules.prompts.service import PromptService, default_prompt_service
+
+logger = logging.getLogger(__name__)
 
 
 class AgentToolService:
-    """Orchestrates LLM function/tool calling interactions with backend validation and execution."""
+    """Orchestrates LangGraph tool-calling workflows using configured LLM providers and backend tools."""
 
     def __init__(
         self,
         registry: LLMProviderRegistry | None = None,
         prompt_service: PromptService | None = None,
+        config: AgentConfig | None = None,
+        retrieval_adapter: RetrievalAdapter | None = None,
     ) -> None:
         self.registry = registry or default_registry
         self.prompt_service = prompt_service or default_prompt_service
+        self.config = config or default_agent_config
+        self.retrieval_adapter = retrieval_adapter
 
     def get_agent_system_prompt(self) -> str:
         """Dynamically load the agent order support prompt template from the database."""
         return self.prompt_service.get_system_prompt("agent_order_support")
 
-    async def _execute_tool_loop(
-        self,
+    @staticmethod
+    def _create_single_turn_caller(
         client: Any,
+        provider: str,
         model: str,
-        user_message: str,
-        system_prompt: str,
-    ) -> tuple[str, str, list[ToolCallRecord], int, int]:
-        """
-        Generic, provider-agnostic multi-step tool calling loop:
-        1. Send prompt + tool declarations to LLM.
-        2. Detect if LLM requests tool execution.
-        3. Validate parameters & execute backend function.
-        4. Append tool execution output back to conversation.
-        5. Request final response synthesis from LLM.
-        """
-        messages: list[dict[str, Any]] = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_message},
-        ]
+    ) -> LLMCaller:
+        """Extract a single LLM turn call without owning the multi-step tool loop."""
 
-        tool_records: list[ToolCallRecord] = []
-        total_prompt_tokens = 0
-        total_completion_tokens = 0
-
-        # Step 1: Initial call with tool declarations
-        response = await client.chat.completions.create(
-            model=model,
-            messages=messages,
-            tools=AVAILABLE_TOOLS,
-            tool_choice="auto",
-        )
-        if response.usage:
-            total_prompt_tokens += response.usage.prompt_tokens
-            total_completion_tokens += response.usage.completion_tokens
-
-        first_choice = response.choices[0]
-        first_msg = first_choice.message
-
-        # Step 2: Check if LLM requested a tool call
-        if first_msg.tool_calls:
-            messages.append(first_msg)
-
-            for call in first_msg.tool_calls:
-                fn_name = call.function.name
-                raw_args = call.function.arguments
-
-                # Step 3: Validate arguments & execute backend function
-                result_dict, exec_latency = dispatch_tool_call(fn_name, raw_args)
-                parsed_args = json.loads(raw_args) if isinstance(raw_args, str) else raw_args
-
-                tool_records.append(
-                    ToolCallRecord(
-                        tool_name=fn_name,
-                        arguments=parsed_args,
-                        result=result_dict,
-                        execution_latency_ms=exec_latency,
-                    )
+        async def call_llm(
+            messages: list[dict[str, Any]],
+            tools: list[dict[str, Any]],
+        ) -> dict[str, Any]:
+            try:
+                response = await client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    tools=tools,
+                    tool_choice="auto",
                 )
+            except (GroqAPIError, OpenAIAPIError, TimeoutError) as exc:
+                raise LLMProviderError.from_upstream(provider, exc) from exc
 
-                # Step 4: Append tool execution result back to conversation
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": call.id,
-                    "content": json.dumps(result_dict),
-                })
+            try:
+                return normalize_openai_chat_completion(response, fallback_model=model)
+            except ValueError as exc:
+                raise LLMProviderError(
+                    provider,
+                    f"{provider.capitalize()} returned a malformed response: {exc}",
+                    status_code=502,
+                ) from exc
 
-            # Step 5: Final LLM synthesis
-            final_response = await client.chat.completions.create(
-                model=model,
-                messages=messages,
-            )
-            if final_response.usage:
-                total_prompt_tokens += final_response.usage.prompt_tokens
-                total_completion_tokens += final_response.usage.completion_tokens
+        return call_llm
 
-            final_reply = final_response.choices[0].message.content or ""
-            return final_reply, final_response.model, tool_records, total_prompt_tokens, total_completion_tokens
-
-        # If no tool was needed, return direct reply
-        return first_msg.content or "", response.model, [], total_prompt_tokens, total_completion_tokens
-
-    async def execute_agent_chat(self, payload: AgentChatRequest) -> AgentChatResponse:
-        started_at = perf_counter()
-
+    async def execute_agent_graph(self, payload: AgentChatRequest) -> AgentState:
+        """Run the full LangGraph workflow and return the final AgentState for inspection."""
         provider_adapter = self.registry.get(payload.provider)
         if provider_adapter is None:
             raise LLMProviderError(
@@ -120,48 +81,81 @@ class AgentToolService:
                 status_code=400,
             )
 
-        # DRY: Let provider adapter handle API key requirement validation
+        if payload.provider not in self.config.supported_providers:
+            raise LLMProviderError(
+                payload.provider,
+                f"Tool calling is only configured for {', '.join(self.config.supported_providers)} "
+                f"(received '{payload.provider}').",
+                status_code=400,
+            )
+
         api_key = provider_adapter.require_api_key()
         model = provider_adapter.default_model
         system_prompt = self.get_agent_system_prompt()
 
-        if payload.provider == "groq":
-            async with AsyncGroq(api_key=api_key, timeout=settings.request_timeout_seconds) as client:
-                reply, model, tool_calls, in_tok, out_tok = await self._execute_tool_loop(
-                    client=client,
-                    model=model,
-                    user_message=payload.message,
-                    system_prompt=system_prompt,
-                )
-        elif payload.provider == "openai":
-            async with AsyncOpenAI(api_key=api_key, timeout=settings.request_timeout_seconds) as client:
-                reply, model, tool_calls, in_tok, out_tok = await self._execute_tool_loop(
-                    client=client,
-                    model=model,
-                    user_message=payload.message,
-                    system_prompt=system_prompt,
-                )
-        else:
-            raise LLMProviderError(
-                payload.provider,
-                f"Tool calling is not currently configured for provider '{payload.provider}'.",
-                status_code=400,
+        client_cls_map = {
+            "groq": AsyncGroq,
+            "openai": AsyncOpenAI,
+        }
+        client_cls = client_cls_map[payload.provider]
+
+        async with client_cls(api_key=api_key, timeout=settings.request_timeout_seconds) as client:
+            caller = self._create_single_turn_caller(
+                client=client,
+                provider=payload.provider,
+                model=model,
+            )
+            return await run_agent_graph(
+                llm_caller=caller,
+                user_request=payload.message,
+                system_prompt=system_prompt,
+                provider=payload.provider,
+                model=model,
+                retrieval_adapter=self.retrieval_adapter,
+                config=self.config,
             )
 
+    async def execute_agent_chat(self, payload: AgentChatRequest) -> AgentChatResponse:
+        """Execute the LangGraph agent workflow and verify execution_status before returning."""
+        started_at = perf_counter()
+        final_state = await self.execute_agent_graph(payload)
+
         latency_ms = round((perf_counter() - started_at) * 1000, 2)
+        used_model = final_state.get("model") or ""
+        in_tok = final_state.get("prompt_tokens", 0)
+        out_tok = final_state.get("completion_tokens", 0)
+        execution_status = final_state.get("execution_status", "completed")
+        errors = final_state.get("errors") or []
+
+        if execution_status != "completed":
+            logger.warning(
+                "Agent graph finished with non-completed status=%s task_id=%s errors=%s",
+                execution_status,
+                final_state.get("task_id"),
+                errors,
+            )
+
+        log_status = "success" if execution_status == "completed" else execution_status
         cost = log_llm_call(
             provider=payload.provider,
-            model=model,
+            model=used_model,
             latency_ms=latency_ms,
             input_tokens=in_tok,
             output_tokens=out_tok,
+            status=log_status,
+            error=errors[-1] if execution_status != "completed" and errors else None,
         )
 
+        tool_records = [
+            ToolCallRecord(**record) for record in final_state.get("tool_results", [])
+        ]
+
         return AgentChatResponse(
-            reply=reply,
+            reply=final_state.get("final_result") or "",
             provider=payload.provider,
-            model=model,
-            tool_calls=tool_calls,
+            model=used_model,
+            execution_status=execution_status,
+            tool_calls=tool_records,
             total_latency_ms=latency_ms,
             estimated_cost_usd=cost,
         )
@@ -172,4 +166,3 @@ default_agent_tool_service = AgentToolService()
 
 def get_agent_tool_service() -> AgentToolService:
     return default_agent_tool_service
-

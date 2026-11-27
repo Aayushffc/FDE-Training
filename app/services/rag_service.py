@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from app.infrastructure.llm_providers.base import BaseLLMProvider
     from app.infrastructure.llm_providers.registry import LLMProviderRegistry
 
+from app.core.exceptions import LLMProviderError
 from app.schemas.rag import RAGRequest, RAGResponse, RAGSourceItem
 from app.services.context_service import ContextEngineeringService
 from app.services.reranking_service import RerankingService
@@ -167,47 +168,25 @@ class RAGService:
         used_provider = provider_name
         used_model = None
 
-        if provider:
-            try:
-                llm_resp = await provider.generate_chat_completion(
-                    payload_or_message=user_prompt,
-                    system_prompt=system_prompt,
-                )
-                answer_text = (getattr(llm_resp, "reply", None) or getattr(llm_resp, "content", "")).strip()
-                input_tokens = getattr(llm_resp, "input_tokens", 0)
-                output_tokens = getattr(llm_resp, "output_tokens", 0)
-                total_tokens = input_tokens + output_tokens
-                llm_latency_ms = getattr(llm_resp, "latency_ms", None)
-                estimated_cost_usd = getattr(llm_resp, "estimated_cost_usd", 0.0)
-                used_provider = getattr(llm_resp, "provider", provider_name)
-                used_model = getattr(llm_resp, "model", None)
-            except Exception:
-                # If upstream LLM provider is unavailable in test environment, extract best source or admit ignorance
-                top_chunk = ordered_candidates[0]
-                top_text = getattr(top_chunk, "content", "")
-                # Check for overlap between question and top_chunk content
-                q_words = set(re.findall(r"\w{3,}", payload.question.lower()))
-                c_words = set(re.findall(r"\w{3,}", top_text.lower()))
-                if len(q_words & c_words) >= 1:
-                    answer_text = f"According to [Source 1], {top_text}"
-                else:
-                    answer_text = "I don't know based on the provided context."
-                input_tokens = len(user_prompt.split())
-                output_tokens = len(answer_text.split())
-                total_tokens = input_tokens + output_tokens
-        else:
-            # Deterministic fallback when no LLM registered
-            top_chunk = ordered_candidates[0]
-            top_text = getattr(top_chunk, "content", "")
-            q_words = set(re.findall(r"\w{3,}", payload.question.lower()))
-            c_words = set(re.findall(r"\w{3,}", top_text.lower()))
-            if len(q_words & c_words) >= 1:
-                answer_text = f"According to [Source 1], {top_text}"
-            else:
-                answer_text = "I don't know based on the provided context."
-            input_tokens = len(user_prompt.split())
-            output_tokens = len(answer_text.split())
-            total_tokens = input_tokens + output_tokens
+        if provider is None:
+            raise LLMProviderError(
+                provider=provider_name or "unknown",
+                message=f"LLM provider '{provider_name}' is not registered or available.",
+                status_code=400,
+            )
+
+        llm_resp = await provider.generate_chat_completion(
+            payload_or_message=user_prompt,
+            system_prompt=system_prompt,
+        )
+        answer_text = (getattr(llm_resp, "reply", None) or getattr(llm_resp, "content", "")).strip()
+        input_tokens = getattr(llm_resp, "input_tokens", 0)
+        output_tokens = getattr(llm_resp, "output_tokens", 0)
+        total_tokens = input_tokens + output_tokens
+        llm_latency_ms = getattr(llm_resp, "latency_ms", None)
+        estimated_cost_usd = getattr(llm_resp, "estimated_cost_usd", 0.0)
+        used_provider = getattr(llm_resp, "provider", provider_name)
+        used_model = getattr(llm_resp, "model", None)
 
         # 5. Extract Citations & Verify Grounding
         raw_tags = re.findall(r"[\[【](Source\s*\d+)[\]】]", answer_text)

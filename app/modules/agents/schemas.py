@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 from app.modules.chat.schemas import Provider, MAX_MESSAGE_LENGTH
@@ -6,6 +6,7 @@ from app.modules.chat.schemas import Provider, MAX_MESSAGE_LENGTH
 
 class OrderStatusArgs(BaseModel):
     """Pydantic schema to validate arguments passed by the LLM for get_order_status."""
+
     order_id: str = Field(
         ...,
         min_length=3,
@@ -14,8 +15,30 @@ class OrderStatusArgs(BaseModel):
     )
 
 
+class SearchKnowledgeArgs(BaseModel):
+    """Pydantic schema to validate arguments passed by the LLM for search_knowledge."""
+
+    query: str = Field(
+        ...,
+        min_length=2,
+        max_length=500,
+        description="The customer support or policy question to search in the knowledge base.",
+    )
+    top_k: int | None = Field(
+        default=None,
+        ge=1,
+        le=10,
+        description="Maximum number of retrieved context chunks to evaluate (1 to 10; defaults to AgentConfig).",
+    )
+    strategy: Literal["hybrid", "vector", "keyword"] | None = Field(
+        default=None,
+        description="Retrieval strategy to use when searching the knowledge base (defaults to AgentConfig).",
+    )
+
+
 class OrderDetails(BaseModel):
     """Domain model representing order lookup output."""
+
     order_id: str
     status: str
     carrier: str | None = None
@@ -27,6 +50,11 @@ class OrderDetails(BaseModel):
 
 class ToolCallRecord(BaseModel):
     """Trace record of a tool executed by the backend during an agent turn."""
+
+    tool_call_id: str = Field(
+        ...,
+        description="Unique provider tool call identifier correlating request and output.",
+    )
     tool_name: str
     arguments: dict[str, Any]
     result: dict[str, Any]
@@ -61,10 +89,17 @@ class AgentChatResponse(BaseModel):
     reply: str = Field(
         ...,
         description="Final synthesized answer returned to the user",
-        examples=["Order ORD123 has been Shipped via FedEx (Tracking: FX-992817203). Estimated delivery is 2026-11-20."],
+        examples=[
+            "Order ORD123 has been Shipped via FedEx (Tracking: FX-992817203). Estimated delivery is 2026-11-20."
+        ],
     )
     provider: Provider = Field(..., examples=["groq"])
     model: str = Field(..., examples=["openai/gpt-oss-120b"])
+    execution_status: str = Field(
+        default="completed",
+        description="Final LangGraph execution status (completed, limit_reached, or failed).",
+        examples=["completed"],
+    )
     tool_calls: list[ToolCallRecord] = Field(default_factory=list)
     total_latency_ms: float = Field(..., ge=0, examples=[1474.48])
     estimated_cost_usd: float = Field(..., ge=0, examples=[0.000192])
@@ -75,8 +110,10 @@ class AgentChatResponse(BaseModel):
                 "reply": "Order ORD123 has been Shipped via FedEx (Tracking: FX-992817203). Estimated delivery is 2026-11-20.",
                 "provider": "groq",
                 "model": "openai/gpt-oss-120b",
+                "execution_status": "completed",
                 "tool_calls": [
                     {
+                        "tool_call_id": "call_abc123",
                         "tool_name": "get_order_status",
                         "arguments": {"order_id": "ORD123"},
                         "result": {
