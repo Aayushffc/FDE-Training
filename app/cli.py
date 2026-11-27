@@ -90,3 +90,13 @@ def seed_prompts_cli() -> None:
     if not script_path.exists():
         script_path = Path(__file__).resolve().parent.parent / "scripts" / "seed_prompts.py"
     runpy.run_path(str(script_path), run_name="__main__")
+
+
+def evaluate_rag_cli() -> None:
+    """Run RAG precision, recall, and refusal evaluation benchmarks."""
+    import runpy
+
+    script_path = Path("scripts") / "evaluate_rag.py"
+    if not script_path.exists():
+        script_path = Path(__file__).resolve().parent.parent / "scripts" / "evaluate_rag.py"
+    runpy.run_path(str(script_path), run_name="__main__")

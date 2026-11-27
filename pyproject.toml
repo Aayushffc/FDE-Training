@@ -14,6 +14,7 @@ dependencies = [
     "fastapi>=0.163.1",
     "google-genai>=3.6.1",
     "groq>=1.7.0",
+    "langgraph>=1.2.24",
     "openai>=3.52.0",
     "pgvector>=0.5.1",
     "psycopg2-binary>=2.9.13",
@@ -34,6 +35,7 @@ stream-client = "app.cli:stream_client"
 seed-chunks = "app.cli:seed_chunks_cli"
 seed-documents = "app.cli:seed_documents_cli"
 seed-prompts = "app.cli:seed_prompts_cli"
+rag-eval = "app.cli:evaluate_rag_cli"
 
 [tool.hatch.build.targets.wheel]
 packages = ["app"]
